@@ -24,11 +24,9 @@ float getStarDistance(vec3 rayPoint) {
 	float yVal = floor(rayPoint.y / 2);
 	float zVal = floor(rayPoint.z / 2);
 	
-	//float bla = sin(xVal * 2241) + cos(yVal * 3432) + sin(zVal * 43545);
+	float f = sin(iGlobalTime) * 0.5;
 	
-	float bla = mod(xVal, mod(yVal, mod(zVal, 485))) + mod(yVal, mod(xVal, mod(zVal, 913))) + mod(zVal, mod(xVal, 5315));
-	
-	if (bla > 10000.3) return 1.5;
+	if (sin(xVal) * f + cos(yVal) * f + sin(zVal) * f > 0.1) return 1.5;
 	
 	//if (mod(floor(rayPoint.x / 2), 2) == 0) x = 1;
 	
@@ -37,7 +35,7 @@ float getStarDistance(vec3 rayPoint) {
 	vec3 modVector = vec3(2, 2, 2);
 	vec3 modPoint = mod(rayPoint, modVector) - 0.5 * modVector;
 	
-	return getSphereDistance(vec3(0), 0.1 * abs(sin(xVal)), modPoint);
+	return getSphereDistance(vec3(0), 0.1, modPoint);
 }
 
 float getPlanetDistance(vec3 rayPoint) {
