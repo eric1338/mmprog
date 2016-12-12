@@ -26,11 +26,11 @@ vec2 rand2(vec2 seed)
 }
 
 
-float nBoxes = 60;
-float rnThreshold = 0.25;
+float nRows = 30;
+float rnThreshold = 0.5;
 
 float getRN(vec2 coord) {
-	return rand(floor(coord * nBoxes));
+	return rand(floor(coord * nRows));
 }
 
 float getShininess(vec2 coord) {
@@ -41,23 +41,24 @@ float getShininess(vec2 coord) {
 	return pow(max(sin(pr), 0.0), 8);
 }
 
-float gV2(vec2 coord) {
+float getStarValue(vec2 coord) {
 	
-	vec2 grid = coord * nBoxes;
-	vec2 flgrid = floor(grid);
-	vec2 middle = flgrid + vec2(0.5);
+	vec2 posInGrid = coord * nRows;
+	vec2 fixedGridPos = floor(posInGrid);
+	vec2 middle = fixedGridPos + vec2(0.5);
 	
 	float rn = getRN(coord);
 	
 	if (rand(rn) < rnThreshold) return 0;
 	
-	vec2 offset = rand2(flgrid) - vec2(0.5);
+	vec2 offset = rand2(fixedGridPos) - vec2(0.5);
 	
 	vec2 starPos = middle + offset * 0.4;
 	
 	float shininess = getShininess(coord + vec2(1));
+	float size = shininess * 3;
 	
-	float dist = 1 - distance(grid, starPos) * (9 - 5 * rn - shininess * 3);
+	float dist = 1 - distance(posInGrid, starPos) * (9 - 5 * rn - size);
 	
 	return pow(max(dist, 0.0), 12 - 2 * shininess);
 }
@@ -68,7 +69,7 @@ void main() {
 	
 	coord.x *= iResolution.x / iResolution.y;
 
-	float value = gV2(coord);
+	float value = getStarValue(coord);
 	
 	const vec3 white = vec3(1);
 	
