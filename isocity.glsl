@@ -68,75 +68,28 @@ float getSubtractBoxDistance(vec3 boxCenter, vec3 boxB, vec3 rayPoint) {
 	return length(max(d, vec3(0))) + vmax(min(d, vec3(0)));
 }
 
-float getBuildingFacadeDistance(vec3 rayPoint) {
-	vec3 buildingCenter = vec3(0, 2, 2);
-	vec3 buildingB = vec3(2, 3, 1);
+
+
+RayHit getBuildingHit(vec3 rayPoint, vec2 buildingCenterXZ) {
+	float rand1 = rand(buildingCenterXZ);
 	
-	float blockDistance = getBoxDistance(buildingCenter, buildingB, rayPoint);
-
-	float windowBlockDistance = getSubtractBoxDistance(vec3(0, 0, 1), vec3(0.6, 0.9, 1), rayPoint);
+	int nWindowsY = 6 + int(rand1 * 4);
+	int nWindowsZ = 4;
 	
-	float facadeDistance = subtractDistances(blockDistance, windowBlockDistance);
-	
-	//return blockDistance;
-	return facadeDistance;
-}
-
-float getWindowDistance(vec3 rayPoint) {
-	return getBoxDistance(vec3(0, 0, 1.2), vec3(0.6, 0.9, 0.1), rayPoint);
-}
-
-
-
-
-RayHit getBuildingFacadeDistance2(vec3 rayPoint) {
-	vec3 buildingCenter = vec3(0, 2, 2);
-	vec3 buildingB = vec3(2, 3, 1);
-	
-	float blockDistance = getBoxDistance(buildingCenter, buildingB, rayPoint);
-
-	float windowBlockDistance = getSubtractBoxDistance(vec3(0, 2, 1), vec3(0.6, 0.9, 1), rayPoint);
-	
-	float facadeDistance = subtractDistances(blockDistance, windowBlockDistance);
-	
-	return RayHit(facadeDistance, vec3(0, 0.5, 1));
-}
-
-
-RayHit getWindowDistance2(vec3 rayPoint) {
-	float windowDistance = getBoxDistance(vec3(0, 2, 1.2), vec3(0.6, 0.9, 0.1), rayPoint);
-	
-	return RayHit(windowDistance, vec3(1, 0.9, 0));
-}
-
-RayHit getBuildingDistance2(vec3 rayPoint) {
-	RayHit facadeHit = getBuildingFacadeDistance2(rayPoint);
-	RayHit windowHit = getWindowDistance2(rayPoint);
-	
-	return getCloserHit(facadeHit, windowHit);
-}
-
-
-
-
-RayHit getBuildingHit(vec3 rayPoint, vec3 buildingCenter) {
-	float rand1 = rand(buildingCenter.xy * buildingCenter.z);
-	float rand2 = rand(buildingCenter.zx * buildingCenter.y);
-	
-	int nWindowsY = 3 + int(rand1 * 4);
-	
-	vec3 buildingB = vec3(2, nWindowsY, 2);
+	vec3 buildingCenter = vec3(buildingCenterXZ.x, nWindowsY / 10.0, buildingCenterXZ.y);
+	vec3 buildingB = vec3(0.2, nWindowsY / 10.0, 0.2);
 	
 	float blockDistance = getBoxDistance(buildingCenter, buildingB, rayPoint);
 	
 	// Performance
-	if (blockDistance > 0.1) return RayHit(blockDistance, vec3(0));
+	if (blockDistance > 0.01) return RayHit(blockDistance, vec3(0));
 	
 	float facadeDistance = blockDistance;
 	
-	float windowDistance = getBoxDistance(vec3(-100), vec3(1), vec3(1));
-	float windowWidth = 0.25;
-	float windowHeight = 0.35;
+	RayHit closestWindowHit = RayHit(9999.9, vec3(0));
+	
+	float windowWidth = 0.025;
+	float windowHeight = 0.035;
 	
 	vec3 windowB = vec3(buildingB.x * 0.98, windowHeight, windowWidth);
 	vec3 cutoutB = vec3(buildingB.x * 6, windowHeight, windowWidth);
@@ -146,7 +99,6 @@ RayHit getBuildingHit(vec3 rayPoint, vec3 buildingCenter) {
 	
 	for (int i = 1; i <= nWindowsY; i++) {
 		for (int j = -1; j <= 1; j++) {
-			//float windowCenterY = buildingCenter.y + (buildingB.y / 1.7) * i;
 			float windowCenterY = startY + stepY * i;
 			float windowCenterZ = buildingCenter.z + (buildingB.z / 1.7) * j;
 			
@@ -156,7 +108,15 @@ RayHit getBuildingHit(vec3 rayPoint, vec3 buildingCenter) {
 			facadeDistance = subtractDistances(facadeDistance, windowCutout);
 			
 			float windowBox = getBoxDistance(windowCenter, windowB, rayPoint);
-			windowDistance = addDistances(windowDistance, windowBox);
+			
+			float rand2 = rand(windowCenter.yz);
+			vec3 windowColor = rand2 > 0.5 ? vec3(0.9) : vec3(0.5);
+			
+			RayHit currentWindowHit = RayHit(windowBox, windowColor);
+			
+			closestWindowHit = getCloserHit(closestWindowHit, currentWindowHit);
+			
+			//windowDistance = addDistances(windowDistance, windowBox);
 		}
 	}
 	
@@ -164,20 +124,19 @@ RayHit getBuildingHit(vec3 rayPoint, vec3 buildingCenter) {
 	vec3 windowColor = vec3(0.8, 0.9, 1);
 	
 	RayHit facadeHit = RayHit(facadeDistance, facadeColor);
-	RayHit windowHit = RayHit(windowDistance, windowColor);
+	//RayHit windowHit = RayHit(windowDistance, windowColor);
 	
-	return getCloserHit(facadeHit, windowHit);
+	return getCloserHit(facadeHit, closestWindowHit);
 }
 
 
 RayHit getBuildingsHit(vec3 rayPoint) {
-	float buildingCenterX = 5.5;
-	float buildingCenterY = 7;
+	float buildingCenterX = 0.55;
 
-	RayHit closestHit = getBuildingHit(rayPoint, vec3(buildingCenterX, buildingCenterY, -32));
+	RayHit closestHit = getBuildingHit(rayPoint, vec2(buildingCenterX, -3.2));
 	
 	for (int i = -3; i <= 4; i++) {
-		RayHit nextBuildingHit = getBuildingHit(rayPoint, vec3(buildingCenterX, buildingCenterY, i * 8));
+		RayHit nextBuildingHit = getBuildingHit(rayPoint, vec2(buildingCenterX, i * 0.8));
 		closestHit = getCloserHit(closestHit, nextBuildingHit);
 	}
 
@@ -187,35 +146,35 @@ RayHit getBuildingsHit(vec3 rayPoint) {
 
 
 RayHit getFloorDistance(vec3 rayPoint) {
-	vec3 floorCenter = vec3(0, -1, 0);
-	vec3 floorB = vec3(40, 1, 40);
+	vec3 floorCenter = vec3(0, -0.1, 0);
+	vec3 floorB = vec3(4, 0.1, 4);
 	
 	float floorDistance = getBoxDistance(floorCenter, floorB, rayPoint);
 	
 	// Performance
-	if (floorDistance > 0.1) return RayHit(floorDistance, vec3(0));
+	if (floorDistance > 0.01) return RayHit(floorDistance, vec3(0));
 	
-	vec3 streetB = vec3(40, 0.5, 40);
+	vec3 streetB = vec3(4, 0.05, 4);
 	
 	float streetDistance = getBoxDistance(floorCenter, streetB, rayPoint);
 	
-	vec3 sidewalkCenter = vec3(0.5, -0.25, 0);
-	vec3 sidewalkB = vec3(1, 0.25, 40);
+	vec3 sidewalkCenter = vec3(0.05, -0.025, 0);
+	vec3 sidewalkB = vec3(0.1, 0.025, 4);
 	float sidewalkDistance = getBoxDistance(sidewalkCenter, sidewalkB, rayPoint);
 	
-	vec3 grassCenter = vec3(10, -0.25, 0);
-	vec3 grassB = vec3(8.5, 0.25, 40);
+	vec3 grassCenter = vec3(1, -0.025, 0);
+	vec3 grassB = vec3(0.85, 0.025, 4);
 	float grassDistance = getBoxDistance(grassCenter, grassB, rayPoint);
 	
 	
-	float stripeLength = 0.4;
-	float stripeWidth = 0.06;
+	float stripeLength = 0.04;
+	float stripeWidth = 0.006;
 	
 	float stripeDistance = getBoxDistance(vec3(-100), vec3(1), vec3(1));
-	vec3 stripeB = vec3(stripeWidth, 0.01, stripeLength);
+	vec3 stripeB = vec3(stripeWidth, 0.001, stripeLength);
 	
 	for (int i = -10; i <= 10; i++) {
-		vec3 stripeCenter = vec3(-5, -0.49, i * 3);
+		vec3 stripeCenter = vec3(-0.5, -0.049, i * 0.3);
 		float singleStripeDistance = getBoxDistance(stripeCenter, stripeB, rayPoint);
 		
 		stripeDistance = addDistances(stripeDistance, singleStripeDistance);
@@ -225,7 +184,7 @@ RayHit getFloorDistance(vec3 rayPoint) {
 	vec3 streetColor = vec3(0.1);
 	vec3 stripeColor = vec3(1);
 	vec3 sidewalkColor = vec3(0.2);
-	vec3 grassColor = vec3(0.2, 0.5, 0.2);
+	vec3 grassColor = vec3(0.2, 0.4, 0.4);
 	
 	RayHit streetHit = RayHit(streetDistance, streetColor);
 	RayHit stripeHit = RayHit(stripeDistance, stripeColor);
@@ -242,7 +201,6 @@ RayHit distFuncWithColor(vec3 rayPoint) {
 	
 	RayHit buildingHit = getBuildingsHit(rayPoint);
 	
-	//return getCloserHit(floorHit, buildingHit);
 	return getCloserHit(floorHit, buildingHit);
 }
 
@@ -251,8 +209,6 @@ float distFunc(vec3 rayPoint) {
 	RayHit rayHit = distFuncWithColor(rayPoint);
 
 	return rayHit.dist;
-	
-	//return min(getBuildingFacadeDistance(rayPoint), getWindowDistance(rayPoint));
 }
 
 vec3 getNormal(vec3 point)
@@ -274,13 +230,37 @@ vec3 getNormal(vec3 point)
 
 
 
+vec3 getBackgroundColor(vec2 coord) {
+	float value = 0;
+	
+	const vec3 white = vec3(1);
+	
+	float f1 = cos(coord.x + 0.2);
+	float f2 = cos(coord.y + 0.1);
+	
+	float greenFactor = f1 * 0.5 + f2 * 0.5;
+	
+	float blueFactor = 1 - greenFactor;
+	
+	greenFactor *= 0.5;
+	blueFactor *= 0.5;
+	
+	vec3 bgColor = vec3(0.0, 0.2 + greenFactor, 0.5 + blueFactor) * 0.4;
+	
+	vec3 color = value * white + (1 - value) * bgColor;
+
+	return color;
+}
+
+
+
 void main()
 {
 	//camera setup
 	vec3 camP = calcCameraPos();
 	vec3 camDir = calcCameraRayDir(80.0, gl_FragCoord.xy, iResolution);
 	
-	int maxSteps = 100;
+	int maxSteps = 400;
 	
 	vec3 color = vec3(0);
 	
@@ -295,9 +275,6 @@ void main()
 	float windowGlowValue = 0;
 	
 	while (step < maxSteps) {
-	
-		//float buildingFacadeDistance = getBuildingFacadeDistance(point);
-		float windowDistance = getWindowDistance(point);
 		
 		RayHit rayHit = distFuncWithColor(point);
 		float hitDistance = rayHit.dist;
@@ -306,24 +283,6 @@ void main()
 		float distanceToCam = distance(camP, point);
 		
 		if (distanceToCam > maxDistance) break;
-		
-		/*
-		if (windowDistance < windowGlowHitDistance) {
-			if (distanceToCam <= maxDistance) {
-				windowGlowValue += pow((windowGlowHitDistance - windowDistance), 0.1) * max(0, maxDistance - distanceToCam) * 0.002;
-			}
-		}
-		
-		if (windowDistance < eps) {
-			hit = true;
-			
-			color = vec3(1, 0.9, 0);
-			
-			break;
-		}
-		*/
-		
-		
 		
 		if (hitDistance < eps) {
 			hit = true;
@@ -344,27 +303,17 @@ void main()
 			//color *= max((maxDistance - distanceToCam) / maxDistance, 0);
 			//color = hitNormal;
 			
-			//color = vec3(lambert);
-			
 			break;
 		}
 		
-		//point = point + camDir * min(windowDistance, buildingFacadeDistance);
 		point = point + camDir * hitDistance;
 	
 		step++;
 	}
 	
 	if (!hit) {
-		//vec2 xyRel = gl_FragCoord.xy / iResolution;
-		//float g = 1 - (xyRel.x * 0.4 + xyRel.y * 0.4);
-		//color = vec3(0.0, 0.2 + g, 0.9) * 0.1;
-		
-		color = vec3(0);
-		//color = vec3(0.4, 0.5, 1);
+		color = getBackgroundColor(camDir.xy);
 	}
-	
-	//color += vec3(1, 0.9, 0) * windowGlowValue;
 	
 	gl_FragColor = vec4(color, 1.0);
 }

@@ -1,0 +1,62 @@
+music test: https://www.shadertoy.com/view/ldXXDj
+
+2d berge mit fbm & parallaxscrolling?
+https://www.shadertoy.com/view/lsKGzt
+
+parallax snow
+https://www.shadertoy.com/view/ldsGDn
+
+
+form/2d:
+https://www.shadertoy.com/view/MlGGDh
+https://www.shadertoy.com/view/4dsXzM
+https://www.shadertoy.com/view/llG3DK
+https://www.shadertoy.com/view/4ldGRf
+https://www.shadertoy.com/view/MtBGRt
+
+space:
+https://www.shadertoy.com/view/MtcGDf
+https://www.shadertoy.com/view/lty3Rt
+https://www.shadertoy.com/view/llj3Rz
+https://www.shadertoy.com/view/ldyXRw
+https://www.shadertoy.com/view/MslGWN (parallax)
+https://www.shadertoy.com/view/XlfGRj (parallax)
+
+voronoi:
+https://www.shadertoy.com/view/Ml3GDX
+https://www.shadertoy.com/view/4lyGDV
+https://www.shadertoy.com/view/XtK3RG
+
+cave:
+https://www.shadertoy.com/view/XtyGzc
+https://www.shadertoy.com/view/Xtt3Wn
+
+fractal:
+https://www.shadertoy.com/view/ltKGzc
+
+clouds: https://www.shadertoy.com/view/XslGRr
+
+mountains: https://www.shadertoy.com/view/MdX3Rr
+
+notebook drawing: https://www.shadertoy.com/view/XtVGD1
+
+
+
+
+(bis: https://www.shadertoy.com/results?query=&sort=hot&from=396&num=12)
+
+Weather
+https://www.shadertoy.com/view/4dsXWn
+
+blur + lens
+https://www.shadertoy.com/view/Xd33Ds
+
+Iso City
+https://www.shadertoy.com/view/MljXzz
+
+
+2d blur
+https://www.shadertoy.com/view/MdSGDm
+
+gauss
+https://www.shadertoy.com/view/XdfGDH
