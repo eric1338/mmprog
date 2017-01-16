@@ -1,0 +1,10 @@
+﻿evtl in den eigenen Shadern öfters Funktionen wie mix verwenden
+parallax scrolling
+
+evtl was mit Physik aus Spiele2
+
+mit PingPong iwas zeichnen mit Rückstand (Lighttrace?)
+
+fBm fractal (3D noise mit val > 0.7 zeichnen oder so)
+
+Repos/Spiele3/*.txts durchgehen
