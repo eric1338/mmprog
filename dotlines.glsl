@@ -1,4 +1,3 @@
-///idea from http://thebookofshaders.com/edit.php#09/marching_dots.frag
 #version 330
 
 uniform vec2 iResolution;
@@ -23,6 +22,23 @@ vec2 rand2(vec2 seed)
 {
 	float r = rand(seed) * TWOPI;
 	return vec2(cos(r), sin(r));
+}
+
+
+//value noise: random values at integer positions with interpolation inbetween
+float noise(float u)
+{
+	float i = floor(u); // integer position
+
+	//random value at nearest integer positions
+	float v0 = rand(i);
+	float v1 = rand(i + 1);
+
+	float f = fract(u);
+	float weight = f; // linear interpolation
+	weight = smoothstep(0, 1, f); // cubic interpolation
+
+	return mix(v0, v1, weight);
 }
 
 
@@ -93,7 +109,17 @@ float getMusicLineValue(vec2 coord) {
 	
 	float ln = length(coord - CENTER) - CIRCLE_MIN;
 	
-	return ln / (CIRCLE_MAX - CIRCLE_MIN);
+	float noi = noise(x * 20);
+	
+	float modVal = mod(iGlobalTime, 6);
+	
+	float modF = modVal < 3 ? modVal : 6 - modVal;
+	
+	float yVal = modF * noi * 0.33;
+	
+	float val = ln / (CIRCLE_MAX - CIRCLE_MIN);
+	
+	return abs(yVal - val) < 0.02 ? 1 : 0;
 }
 
 

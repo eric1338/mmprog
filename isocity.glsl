@@ -1,5 +1,45 @@
 #version 330
-#include "../libs/camera.glsl"
+//#include "../libs/camera.glsl"
+
+
+// include funktioniert nicht mehr Oo
+
+uniform float iCamPosX;
+uniform float iCamPosY;
+uniform float iCamPosZ;
+uniform float iCamRotX;
+uniform float iCamRotY;
+uniform float iCamRotZ;
+
+vec3 calcCameraPos()
+{
+	return vec3(iCamPosX, iCamPosY, iCamPosZ);
+}
+
+// Rotate around a coordinate axis (i.e. in a plane perpendicular to that axis) by angle <a>.
+// Read like this: R(p.xz, a) rotates "x towards z".
+// This is fast if <a> is a compile-time constant and slower (but still practical) if not.
+void rotateAxis(inout vec2 p, float a) {
+	p = cos(a)*p + sin(a)*vec2(p.y, -p.x);
+}
+
+vec3 calcCameraRayDir(float fov, vec2 fragCoord, vec2 resolution) 
+{
+	float tanFov = tan(fov / 2.0 * 3.14159 / 180.0) / resolution.x;
+	vec2 p = tanFov * (fragCoord * 2.0 - resolution.xy);
+	vec3 rayDir = normalize(vec3(p.x, p.y, 1.0));
+	rotateAxis(rayDir.yz, iCamRotX);
+	rotateAxis(rayDir.xz, iCamRotY);
+	rotateAxis(rayDir.xy, iCamRotZ);
+	return rayDir;
+}
+
+
+
+
+
+
+
 
 uniform vec2 iResolution;
 uniform float iGlobalTime;
@@ -297,6 +337,13 @@ RayHit getBuildingHit21(vec3 rayPoint, vec2 buildingCenterXZ) {
 
 
 RayHit getBuildingsHit2(vec3 rayPoint) {
+	vec3 myBoxC = vec3(CENTER.x, 1, CENTER.y);
+	vec3 myBoxB = vec3(1);
+	
+	float myBoxDist = getBoxDistance(myBoxC, myBoxB, rayPoint);
+	
+	return RayHit(myBoxDist, vec3(1));
+	
 	float buildingRows = floor(CORNER_WIDTH / (MIN_BUILDING_SPACE + BUILDING_WIDTH));
 	
 	float buildingSpace = (CORNER_WIDTH - buildingRows * BUILDING_WIDTH) / buildingRows;
@@ -305,6 +352,8 @@ RayHit getBuildingsHit2(vec3 rayPoint) {
 	
 	
 	RayHit closestHit = FAR_HIT;
+	
+	return FAR_HIT;
 	
 	for (int i = 0; i < 4; i++) {
 		vec2 upperLeftCorner;
@@ -327,8 +376,8 @@ RayHit getBuildingsHit2(vec3 rayPoint) {
 		//return RayHit(testDist, vec3(0.4, 0.9, 1.0));
 		
 		if (testDist > 0.05) {
-			//closestHit = RayHit(testDist, vec3(0));
-			//continue;
+			closestHit = RayHit(testDist, vec3(0));
+			continue;
 		}
 		
 		for (int j = 0; j < buildingRows; j++) {
@@ -374,10 +423,21 @@ void bla() {
 */
 
 
+vec3 getModRayPoint(vec3 rayPoint) {
+	vec3 modVector = vec3(getTileWidth(), 0, getTileWidth());
+	
+	vec3 modRayPoint = mod(rayPoint, modVector) - 0.5 * modVector;
+	
+	return vec3(modRayPoint.x, rayPoint.y, modRayPoint.z);
+}
+
+
 
 RayHit distFuncWithColor(vec3 rayPoint) {
-	RayHit floorHit = getFloorHit(rayPoint);
-	RayHit buildingHit = getBuildingsHit2(rayPoint);
+	vec3 modRayPoint = getModRayPoint(rayPoint);
+	
+	RayHit floorHit = getFloorHit(modRayPoint);
+	RayHit buildingHit = getBuildingsHit2(modRayPoint);
 	
 	return getCloserHit(floorHit, buildingHit);
 }
@@ -438,7 +498,7 @@ void main()
 	vec3 camP = calcCameraPos();
 	vec3 camDir = calcCameraRayDir(80.0, gl_FragCoord.xy, iResolution);
 	
-	int maxSteps = 150;
+	int maxSteps = 200;
 	
 	vec3 color = vec3(0);
 	
@@ -448,7 +508,7 @@ void main()
 	
 	bool hit = false;
 	
-	float maxDistance = 30;
+	float maxDistance = 150;
 	
 	while (step < maxSteps) {
 		
