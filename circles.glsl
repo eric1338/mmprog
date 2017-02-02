@@ -67,10 +67,21 @@ float getCirclesValue(vec2 coord) {
 		circleValue += getCircleValue(start, start + size, randVec, coord);
 	}
 	
-	
 	return circleValue;
 }
 
+
+vec3 getBGColor(vec2 coord) {
+	float yf = 1;
+	float xf = 0.0;
+	
+	float dx1 = coord.y * yf + coord.x * xf;
+	float dx2 = (1 - coord.y) * yf + (1 - coord.x) * xf;
+	
+	return vec3(1, 0.0, 0.34) * dx1 + vec3(0.5, 0.0, 0.2) * dx2;
+	//return vec3(0, 0.7, 1) * dx1 + vec3(0, 0.4, 1.0) * dx2;
+	//return vec3(0.0, 0.9, 0.8) * dx1 + vec3(0.0, 0.5, 0.4) * dx2;
+}
 
 
 void main() {
@@ -79,10 +90,11 @@ void main() {
 	
 	coord.x *= iResolution.x / iResolution.y;
 	
-	//vec3 color = vec3(getLinesValue(coord));
+	float circlesValue = getCirclesValue(coord);
 	
-	//color += vec3(getPointsValue(coord));
-	vec3 color = vec3(getCirclesValue(coord));
+	vec3 color = vec3(circlesValue);
+	
+	if (circlesValue < 0.05) color = getBGColor(coord);
 	
     gl_FragColor = vec4(color, 1.0);
 }
