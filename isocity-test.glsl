@@ -68,7 +68,7 @@ vec2 rand2(vec2 seed)
 
 
 
-const float STREET_WIDTH = 1.0;
+const float STREET_WIDTH = 1;
 const float SIDEWALK_WIDTH = 0.2;
 const float CORNER_WIDTH = 4.4;
 
@@ -80,10 +80,7 @@ const vec3 CENTER = vec3(0.0);
 
 const float FLOOR_BLOCK_HEIGHT = 0.05;
 
-
-const float ROWS_PER_TILE = 7;
-const float REL_BUILDING_WIDTH = 0.6;
-const float MIN_MARGIN_TO_SIDEWALK = 0.05;
+const float BUILDING_ROWS_PER_CORNER = 3;
 
 
 const vec3 STREET_COLOR = vec3(0.1);
@@ -265,8 +262,6 @@ const int MAX_ADDITIONAL_WINDOW_ROWS = 4;
 const int WINDOW_COLS = 4;
 
 
-const vec3 BUILDING_COLOR = vec3(0.2);
-
 const vec3 WINDOW_ON_COLOR = vec3(0.9);
 const vec3 WINDOW_OFF_COLOR = vec3(0.5);
 
@@ -341,70 +336,13 @@ RayHit getBuildingHit21(vec3 rayPoint, vec2 buildingCenterXZ) {
 }
 
 
-
-
-
-
 RayHit getBuildingsHit2(vec3 rayPoint) {
-	float rowSize = getTileWidth() / ROWS_PER_TILE;
+	vec3 myBoxC = vec3(CENTER.x, 1, CENTER.y);
+	vec3 myBoxB = vec3(1);
 	
-	vec3 rowModVector = vec3(rowSize, 1, rowSize);
+	float myBoxDist = getBoxDistance(myBoxC, myBoxB, rayPoint);
 	
-	vec3 rowModRayPoint = mod(rayPoint, rowModVector) - 0.5 * rowModVector;
-	
-	vec3 rowRayPoint = vec3(rowModRayPoint.x, rayPoint.y, rowModRayPoint.z);
-	
-	float buildingSideSpace = (rowSize - rowSize * REL_BUILDING_WIDTH) / 2.0;
-	
-	float rowBuildingStartX = floor(abs(rayPoint.x) / rowSize) * rowSize + buildingSideSpace;
-	float rowBuildingStartZ = floor(abs(rayPoint.z) / rowSize) * rowSize + buildingSideSpace;
-	
-	float h = 0.9 + rowBuildingStartX * 0.1 + rowBuildingStartZ * 0.1;
-	
-	h = 0.9;
-	
-	
-	float buildingBLength = rowSize * REL_BUILDING_WIDTH / 2.0;
-	
-	vec3 myBoxC = vec3(0, h, 0);
-	vec3 myBoxB = vec3(buildingBLength, h, buildingBLength);
-	
-	
-	float myBoxDist = getBoxDistance(myBoxC, myBoxB, rowRayPoint);
-	
-	float closestBuildingStart = HALF_STREET_WIDTH + SIDEWALK_WIDTH + MIN_MARGIN_TO_SIDEWALK;
-	
-	float dis1 = (closestBuildingStart + buildingSideSpace) - abs(rayPoint.x);
-	float dis2 = (closestBuildingStart + buildingSideSpace) - abs(rayPoint.z);
-	
-	float dis = min(dis1, dis2);
-	
-	if (dis1 < 0) dis = dis2;
-	if (dis2 < 0) dis = dis1;
-	
-	//dis = dis1;
-	
-	//dis -= 0.1;
-	
-	dis = buildingSideSpace;
-	
-	if (rowBuildingStartX < closestBuildingStart) {
-		// TODO: statt buildingSideSpace was anderes -> optimize
-		//return RayHit(myBoxDist, vec3(1, 0, 0.4));
-		return RayHit(dis, vec3(0));
-	}
-	if (rowBuildingStartZ < closestBuildingStart) {
-		//return RayHit(myBoxDist, vec3(0, 0.4, 1));
-		return RayHit(dis, vec3(0));
-	}
-	
-	vec3 buildingColor = BUILDING_COLOR;
-	
-	if ((abs(rowRayPoint.x) < 0.2 || abs(rowRayPoint.z) < 0.2) && rayPoint.y > 0.4 && rayPoint.y < 1.0) {
-		buildingColor = WINDOW_ON_COLOR;
-	}
-	
-	return RayHit(myBoxDist, vec3(buildingColor));
+	return RayHit(myBoxDist, vec3(1));
 	
 	float buildingRows = floor(CORNER_WIDTH / (MIN_BUILDING_SPACE + BUILDING_WIDTH));
 	
@@ -486,7 +424,7 @@ void bla() {
 
 
 vec3 getModRayPoint(vec3 rayPoint) {
-	vec3 modVector = vec3(getTileWidth(), 1, getTileWidth());
+	vec3 modVector = vec3(getTileWidth(), 0, getTileWidth());
 	
 	vec3 modRayPoint = mod(rayPoint, modVector) - 0.5 * modVector;
 	
@@ -554,13 +492,147 @@ vec3 getBackgroundColor(vec2 coord) {
 
 
 
+
+
+
+
+
+float nX = 10;
+float nY = 10;
+
+vec2 getGridPosition(vec2 coord) {
+	return coord * vec2(nX, nY);
+}
+
+vec2 fixGridPosition(vec2 pos) {
+	return pos - mod(pos, vec2(1)) + vec2(0.5);
+}
+
+vec2 getFixedGridPosition(vec2 coord) {
+	return fixGridPosition(getGridPosition(coord));
+}
+
+// TODO: offset auch negativ
+vec2 getVoronoiPointPosition(vec2 fixedGridPos) {
+	vec2 fixedOffset = vec2(rand(fixedGridPos), rand(fixedGridPos + vec2(1)));
+	
+	fixedOffset = fixedOffset - vec2(0.5);
+	
+	float r1 = rand(fixedOffset.x);
+	float r2 = rand(fixedOffset.y);
+	
+	vec2 timeOffset = vec2(sin(iGlobalTime * r1)) * r2 * 0;
+	
+	return fixedGridPos + fixedOffset * 0.9 + timeOffset;
+}
+
+vec3 getVoronoiPointColor(vec2 fixedGridPos) {
+	vec2 color2 = rand2(fixedGridPos);
+	
+	float r = rand(fixedGridPos) * 0.5 + 0.5;
+	float b = rand(fixedGridPos.yx) * 0.5 + 0.5;
+	
+	return vec3(0, r, b);
+}
+
+
+vec2 getVoronoiCoord(vec2 coord) {
+	vec2 newCoord = vec2(1);
+	
+	float closestDistance = 999;
+	
+	vec2 coordGridPosition = getGridPosition(coord);
+	vec2 coordFixedGridPosition = getFixedGridPosition(coord);
+	
+	vec2 t = fract(coordGridPosition);
+	
+	//if (t.x < 0.03 || t.y < 0.03) return vec3(1);
+	
+	for (int i = -1; i <= 1; i++) {
+		for (int j = -1; j <= 1; j++) {
+			
+			vec2 currentFixedGridPosition = coordFixedGridPosition + vec2(i, j);
+			
+			vec2 voronoiPointPosition = getVoronoiPointPosition(currentFixedGridPosition);
+			
+			float dist = distance(coordGridPosition, voronoiPointPosition);
+			
+			//if (dist < 0.03) return vec3(1);
+			
+			if (dist < closestDistance) {
+				closestDistance = dist;
+				newCoord = voronoiPointPosition;
+				//newCoord = getVoronoiPointColor(currentFixedGridPosition).gb;
+			}	
+		}
+	}
+	
+	return newCoord;
+}
+
+vec3 getVoronoiColor(vec2 coord) {
+	vec3 color = vec3(1);
+	
+	float closestDistance = 999;
+	
+	vec2 coordGridPosition = getGridPosition(coord);
+	vec2 coordFixedGridPosition = getFixedGridPosition(coord);
+	
+	vec2 t = fract(coordGridPosition);
+	
+	//if (t.x < 0.03 || t.y < 0.03) return vec3(1);
+	
+	for (int i = -1; i <= 1; i++) {
+		for (int j = -1; j <= 1; j++) {
+			
+			vec2 currentFixedGridPosition = coordFixedGridPosition + vec2(i, j);
+			
+			vec2 voronoiPointPosition = getVoronoiPointPosition(currentFixedGridPosition);
+			
+			float dist = distance(coordGridPosition, voronoiPointPosition);
+			
+			//if (dist < 0.03) return vec3(1);
+			
+			if (dist < closestDistance) {
+				closestDistance = dist;
+				color = getVoronoiPointColor(currentFixedGridPosition);
+			}	
+		}
+	}
+	
+	return color;
+}
+
+
+
+
+
+
+
+
+
 void main()
 {
+	//coordinates in range [0,1]
+    vec2 coord = gl_FragCoord.xy/iResolution;
+	
+	coord.x *= iResolution.x / iResolution.y;
+	
+	//vec2 coord = getVoronoiCoord(gl_FragCoord.xy);
+	
+	//coord = gl_FragCoord.xy;
+	
+	//gl_FragColor = vec4(getVoronoiColor(coord), 1.0);
+	
+	//coord = getVoronoiCoord(coord);
+	
+	coord = vec2(coord.x, coord.y) * (1 + (iGlobalTime / 10.0));
+	
 	//camera setup
 	vec3 camP = calcCameraPos();
-	vec3 camDir = calcCameraRayDir(80.0, gl_FragCoord.xy, iResolution);
+	vec3 camDir = calcCameraRayDir(80.0, coord * iResolution, iResolution);
 	
-	int maxSteps = 500;
+	int maxSteps = 200;
 	
 	vec3 color = vec3(0);
 	

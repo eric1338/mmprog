@@ -25,8 +25,12 @@ vec2 rand2(vec2 seed)
 }
 
 
-const vec2 CENTER = vec2(0.5);
+const vec2 CENTER = vec2(1, 0.5);
 
+
+const float NUMBER_OF_CIRCLES = 15;
+const float CIRCLE_SIZE = 0.05;
+const float CIRCLE_STEP = 0.1;
 
 bool isNotInCircle(float start, float end, vec2 coord) {
 	float dist = distance(CENTER, coord);
@@ -59,11 +63,13 @@ float getCircleValue(float start, float end, vec2 randVec, vec2 coord) {
 float getCirclesValue(vec2 coord) {
 	float circleValue = 0;
 	
-	for (float i = 1; i < 10; i++) {
-		float f = max(6 - (iGlobalTime / 1.0), 1.0);
-		float start = (i / 10) * f;
-		float size = 0.05 * f;
-		vec2 randVec = vec2(i / 10.0, i / 10.0 + 0.05);
+	for (float i = 1; i <= NUMBER_OF_CIRCLES; i++) {
+		float zoomFactor = max(4 - (iGlobalTime / 1), 1.0);
+		
+		float start = i * CIRCLE_STEP * zoomFactor;
+		float size = CIRCLE_SIZE * zoomFactor;
+		vec2 randVec = vec2(i * CIRCLE_STEP, i * CIRCLE_STEP + CIRCLE_SIZE);
+		
 		circleValue += getCircleValue(start, start + size, randVec, coord);
 	}
 	
@@ -78,7 +84,7 @@ vec3 getBGColor(vec2 coord) {
 	float dx1 = coord.y * yf + coord.x * xf;
 	float dx2 = (1 - coord.y) * yf + (1 - coord.x) * xf;
 	
-	return vec3(1, 0.0, 0.34) * dx1 + vec3(0.5, 0.0, 0.2) * dx2;
+	return vec3(1, 0.0, 0.54) * dx1 + vec3(0.5, 0.0, 0.2) * dx2;
 	//return vec3(0, 0.7, 1) * dx1 + vec3(0, 0.4, 1.0) * dx2;
 	//return vec3(0.0, 0.9, 0.8) * dx1 + vec3(0.0, 0.5, 0.4) * dx2;
 }
@@ -86,7 +92,7 @@ vec3 getBGColor(vec2 coord) {
 
 void main() {
 	//coordinates in range [0,1]
-    vec2 coord = gl_FragCoord.xy/iResolution;
+	vec2 coord = gl_FragCoord.xy / iResolution;
 	
 	coord.x *= iResolution.x / iResolution.y;
 	
