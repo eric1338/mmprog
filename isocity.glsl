@@ -1,51 +1,13 @@
 #version 330
-//#include "../libs/camera.glsl"
 
-
-// include funktioniert nicht mehr Oo
-
-uniform float iCamPosX;
-uniform float iCamPosY;
-uniform float iCamPosZ;
-uniform float iCamRotX;
-uniform float iCamRotY;
-uniform float iCamRotZ;
-
-vec3 calcCameraPos()
-{
-	return vec3(iCamPosX, iCamPosY, iCamPosZ);
-}
-
-// Rotate around a coordinate axis (i.e. in a plane perpendicular to that axis) by angle <a>.
-// Read like this: R(p.xz, a) rotates "x towards z".
-// This is fast if <a> is a compile-time constant and slower (but still practical) if not.
-void rotateAxis(inout vec2 p, float a) {
-	p = cos(a)*p + sin(a)*vec2(p.y, -p.x);
-}
-
-vec3 calcCameraRayDir(float fov, vec2 fragCoord, vec2 resolution) 
-{
-	float tanFov = tan(fov / 2.0 * 3.14159 / 180.0) / resolution.x;
-	vec2 p = tanFov * (fragCoord * 2.0 - resolution.xy);
-	vec3 rayDir = normalize(vec3(p.x, p.y, 1.0));
-	rotateAxis(rayDir.yz, iCamRotX);
-	rotateAxis(rayDir.xz, iCamRotY);
-	rotateAxis(rayDir.xy, iCamRotZ);
-	return rayDir;
-}
-
-
-
-
-
-
+#include "mylib.glsl"
+#include "../libs/camera.glsl"
 
 
 uniform vec2 iResolution;
 uniform float iGlobalTime;
 
-const float eps = 0.001;
-
+const float EPSILON = 0.001;
 
 const float PI = 3.1415926535897932384626433832795;
 const float TWOPI = 2 * PI;
@@ -67,10 +29,20 @@ vec2 rand2(vec2 seed)
 }
 
 
+const float FOG_START = 10;
+const float FOG_END = 40;
+
+float getFogFactor(float distance) {
+	if (distance < FOG_START) return 1;
+	if (distance > FOG_END) return 0;
+	
+	return (FOG_END - distance) / (FOG_END - FOG_START);
+}
+
 
 const float STREET_WIDTH = 1.0;
 const float SIDEWALK_WIDTH = 0.2;
-const float CORNER_WIDTH = 4.4;
+const float CORNER_WIDTH = 4.0;
 
 const float SIDEWALK_DEPTH = 0.01;
 const float CORNER_DEPTH = 0.0;
@@ -82,7 +54,7 @@ const float FLOOR_BLOCK_HEIGHT = 0.05;
 
 
 const float ROWS_PER_TILE = 7;
-const float REL_BUILDING_WIDTH = 0.6;
+const float REL_BUILDING_WIDTH = 0.8;
 const float MIN_MARGIN_TO_SIDEWALK = 0.05;
 
 
@@ -90,6 +62,10 @@ const vec3 STREET_COLOR = vec3(0.1);
 const vec3 STRIPE_COLOR = vec3(1);
 const vec3 SIDEWALK_COLOR = vec3(0.2);
 const vec3 CORNER_COLOR = vec3(0.2, 0.4, 0.4);
+
+const vec3 BUILDING_COLOR = vec3(0.2);
+const vec3 WINDOW_ON_COLOR = vec3(0.9);
+const vec3 WINDOW_OFF_COLOR = vec3(0.25);
 
 
 const float HALF_STREET_WIDTH = STREET_WIDTH / 2.0;
@@ -109,27 +85,38 @@ float getHalfTileWidth() {
 
 
 
-struct RayHit {
-	float dist;
+struct LightedColor {
 	vec3 color;
+	float lightFactor;
 };
 
-const RayHit FAR_HIT = RayHit(9999, vec3(0));
+struct RayResult {
+	float dist;
+	vec3 color;
+	float lightFactor;
+};
 
-
-RayHit getCloserHit(RayHit hit1, RayHit hit2) {
-	if (hit1.dist < hit2.dist) return hit1;
-	
-	return hit2;
+RayResult NoLightRayResult(float dist, vec3 color) {
+	return RayResult(dist, color, 0.0);
 }
 
-RayHit getClosestHit(RayHit hit1, RayHit hit2, RayHit hit3, RayHit hit4) {
-	RayHit closerHit1 = getCloserHit(hit1, hit2);
-	RayHit closerHit2 = getCloserHit(closerHit1, hit3);
-	
-	return getCloserHit(closerHit2, hit4);
+RayResult NoHitRayResult(float dist) {
+	return RayResult(dist, vec3(0), 0.0);
 }
 
+
+RayResult getCloserRayResult(RayResult result1, RayResult result2) {
+	if (result1.dist < result2.dist) return result1;
+	
+	return result2;
+}
+
+RayResult getClosestRayResult(RayResult rayResult1, RayResult rayResult2, RayResult rayResult3, RayResult rayResult4) {
+	RayResult closerResult1 = getCloserRayResult(rayResult1, rayResult2);
+	RayResult closerResult2 = getCloserRayResult(rayResult3, rayResult4);
+	
+	return getCloserRayResult(closerResult1, closerResult2);
+}
 
 
 
@@ -158,17 +145,17 @@ float getSubtractBoxDistance(vec3 boxCenter, vec3 boxB, vec3 rayPoint) {
 
 
 
-RayHit getStreetHit(vec3 rayPoint) {
+RayResult getStreetResult(vec3 rayPoint) {
 	vec3 streetCenter = vec3(CENTER.x, CENTER.y - STREET_DEPTH - HALF_FLOOR_BLOCK_HEIGHT, CENTER.z);
 	vec3 streetB = vec3(getHalfTileWidth(), HALF_FLOOR_BLOCK_HEIGHT, getHalfTileWidth());
 	
 	float streetDistance = getBoxDistance(streetCenter, streetB, rayPoint);
 
-	return RayHit(streetDistance, STREET_COLOR);
+	return NoLightRayResult(streetDistance, STREET_COLOR);
 }
 
 
-RayHit getSidewalkHit(vec3 rayPoint) {
+RayResult getSidewalkResult(vec3 rayPoint) {
 	float closeCenterOffset = HALF_STREET_WIDTH + HALF_SIDEWALK_WIDTH;
 	float farCenterOffset = HALF_STREET_WIDTH + HALF_WHOLE_CORNER_WIDTH;
 	float veryFarCenterOffset = HALF_STREET_WIDTH + SIDEWALK_WIDTH + HALF_CORNER_WIDTH;
@@ -204,11 +191,11 @@ RayHit getSidewalkHit(vec3 rayPoint) {
 	sidewalkDistance = addDistances(sidewalkDistance, sidewalk7Distance);
 	sidewalkDistance = addDistances(sidewalkDistance, sidewalk8Distance);
 	
-	return RayHit(sidewalkDistance, SIDEWALK_COLOR);
+	return NoLightRayResult(sidewalkDistance, SIDEWALK_COLOR);
 }
 
 
-RayHit getCornerHit(vec3 rayPoint) {
+RayResult getCornerResult(vec3 rayPoint) {
 	float centerOffset = HALF_STREET_WIDTH + SIDEWALK_WIDTH + HALF_CORNER_WIDTH;
 	
 	float cornerCenterY = CENTER.y - CORNER_DEPTH - HALF_FLOOR_BLOCK_HEIGHT;
@@ -229,123 +216,149 @@ RayHit getCornerHit(vec3 rayPoint) {
 	cornerDistance = addDistances(cornerDistance, corner3Distance);
 	cornerDistance = addDistances(cornerDistance, corner4Distance);
 	
-	return RayHit(cornerDistance, CORNER_COLOR);
+	return NoLightRayResult(cornerDistance, CORNER_COLOR);
 }
 
 
-RayHit getFloorHit(vec3 rayPoint) {
+RayResult getFloorResult(vec3 rayPoint) {
 	vec3 floorCenter = vec3(CENTER.x, CENTER.y - HALF_FLOOR_BLOCK_HEIGHT, CENTER.z);
 	vec3 floorB = vec3(getHalfTileWidth(), HALF_FLOOR_BLOCK_HEIGHT, getHalfTileWidth());
 
 	float floorDistance = getBoxDistance(floorCenter, floorB, rayPoint);
 	
 	// Performance
-	if (floorDistance > 0.1) return RayHit(floorDistance, vec3(0));
+	if (floorDistance > 0.1) return NoHitRayResult(floorDistance);
 	
-	RayHit streetHit = getStreetHit(rayPoint);
-	RayHit sidewalkHit = getSidewalkHit(rayPoint);
-	RayHit cornerHit = getCornerHit(rayPoint);
+	RayResult streetResult = getStreetResult(rayPoint);
+	RayResult sidewalkResult = getSidewalkResult(rayPoint);
+	RayResult cornerResult = getCornerResult(rayPoint);
 	
-	RayHit closestHit = getCloserHit(streetHit, sidewalkHit);
-	closestHit = getCloserHit(closestHit, cornerHit);
+	RayResult closestResult = getCloserRayResult(streetResult, sidewalkResult);
+	closestResult = getCloserRayResult(closestResult, cornerResult);
 	
-	return closestHit;
+	return closestResult;
+}
+
+
+const float MINIMUM_WINDOW_ROWS = 4;
+const float WINDOWS_PER_ROW = 5;
+
+const float WINDOW_WIDTH = 0.06;
+const float WINDOW_HEIGHT = 0.25;
+
+const float GROUND_LEVEL_HEIGHT = 0.3;
+
+const float GLOW_LENGTH = 0.04;
+
+const float HALF_WINDOW_WIDTH = WINDOW_WIDTH / 2.0;
+
+
+
+float WINDOW_ON_EXPONENT = 4;
+float WINDOW_OFF_EXPONENT = 8;
+
+float WINDOW_ON_THRESHOLD = 1.0;
+
+float X_SEED = 3;
+float Y_SEED = 7;
+float Z_SEED = 4;
+float MINUS_SEED_FACTOR = 3;
+
+
+
+struct WindowValue {
+	float glowFactor;
+	float randFactor;
+};
+
+
+WindowValue getWindowValue(float value, float windowSize, float spaceBetweenWindows, float end, float seed) {
+	float unitSize = windowSize + spaceBetweenWindows;
+	
+	float modValue = mod(value, unitSize);
+	
+	float randFactor = rand(floor((value + GLOW_LENGTH) / unitSize) + seed);
+	
+	
+	float glowingPartSize = windowSize + GLOW_LENGTH;
+	
+	if (value > (end - GLOW_LENGTH)) {
+		return WindowValue(0.0, 0.0);
+	}
+	
+	if (modValue < windowSize) {
+		return WindowValue(1.0, randFactor);
+	}
+	
+	if (modValue < glowingPartSize) {
+		float glowFactor = myReverseSmoothstep2(modValue, windowSize, GLOW_LENGTH);
+		return WindowValue(glowFactor, randFactor);
+	}
+	
+	if (modValue > (unitSize - GLOW_LENGTH)) {
+		float glowFactor = mySmoothstep2(modValue, unitSize - GLOW_LENGTH, GLOW_LENGTH);
+		return WindowValue(glowFactor, randFactor);
+	}
+	
+	return WindowValue(0.0, 0.0);
 }
 
 
 
-
-const float BUILDING_WIDTH = 0.8;
-const float HALF_BUILDING_WIDTH = BUILDING_WIDTH / 2.0;
-
-const float MIN_BUILDING_SPACE = 0.2;
-
-const int MIN_WINDOW_ROWS = 6;
-const int MAX_ADDITIONAL_WINDOW_ROWS = 4;
-const int WINDOW_COLS = 4;
-
-
-const vec3 BUILDING_COLOR = vec3(0.2);
-
-const vec3 WINDOW_ON_COLOR = vec3(0.9);
-const vec3 WINDOW_OFF_COLOR = vec3(0.5);
-
-
-RayHit getBuildingHit2(vec3 rayPoint, vec2 buildingCenterXZ) {
-	vec3 buildingCenter = vec3(buildingCenterXZ.x, 0.5, buildingCenterXZ.y);
-	vec3 buildingB = vec3(HALF_BUILDING_WIDTH, 0.5, HALF_BUILDING_WIDTH);
+WindowValue getHorizontalWindowValue(float horizontalValue, float buildingWidth, float spaceBetweenWindows, float seed) {
+	float value = abs(horizontalValue) + HALF_WINDOW_WIDTH;
 	
-	float ds = getBoxDistance(buildingCenter, buildingB, rayPoint);
+	float newSeed = seed;
 	
-	return RayHit(ds, vec3(1));
+	if (horizontalValue < 0 && abs(horizontalValue) > (HALF_WINDOW_WIDTH + GLOW_LENGTH)) {
+		newSeed = seed * MINUS_SEED_FACTOR;
+	}
+	
+	return getWindowValue(value, WINDOW_WIDTH, spaceBetweenWindows, buildingWidth / 2.0, newSeed);
+}
+
+WindowValue getVerticalWindowValue(float verticalValue, float buildingHeight, float spaceBetweenWindows, float seed) {
+	if (verticalValue < (GROUND_LEVEL_HEIGHT - GLOW_LENGTH)) return WindowValue(0.0, 0.0);
+	
+	float value = verticalValue - GROUND_LEVEL_HEIGHT;
+	
+	return getWindowValue(value, WINDOW_HEIGHT, spaceBetweenWindows, buildingHeight - GROUND_LEVEL_HEIGHT, seed);
+}
+
+LightedColor getBuildingColor(float buildingWidth, float buildingHeight, vec3 rayPoint, vec3 rowRayPoint, float seed) {
+	float totalWindowWidth = WINDOWS_PER_ROW * WINDOW_WIDTH;
+	float horizontalSpaceBetweenWindows = (buildingWidth - totalWindowWidth) / (WINDOWS_PER_ROW + 1);
+	
+	float xSeed = X_SEED * seed;
+	float ySeed = Y_SEED * seed;
+	float zSeed = Z_SEED * seed;
+	
+	WindowValue xWindowValue = getHorizontalWindowValue(rowRayPoint.x, buildingWidth, horizontalSpaceBetweenWindows, xSeed);
+	WindowValue zWindowValue = getHorizontalWindowValue(rowRayPoint.z, buildingWidth, horizontalSpaceBetweenWindows, zSeed);
+	
+	WindowValue hWindowValue = xWindowValue.glowFactor < zWindowValue.glowFactor ? zWindowValue : xWindowValue;
+	
+	float totalWindowHeight = MINIMUM_WINDOW_ROWS * WINDOW_HEIGHT;
+	float verticalSpaceBetweenWindows = (buildingHeight - GROUND_LEVEL_HEIGHT - totalWindowHeight) / MINIMUM_WINDOW_ROWS;
+	
+	WindowValue vWindowValue = getVerticalWindowValue(rayPoint.y, buildingHeight, verticalSpaceBetweenWindows, ySeed);
+	
+	float glowValue = hWindowValue.glowFactor * vWindowValue.glowFactor;
+	
+	bool isWindowOn = hWindowValue.randFactor + vWindowValue.randFactor > WINDOW_ON_THRESHOLD;
+	
+	float glowExponent = isWindowOn ? WINDOW_ON_EXPONENT : WINDOW_OFF_EXPONENT;
+	vec3 windowColor = isWindowOn ? WINDOW_ON_COLOR : WINDOW_OFF_COLOR;
+	
+	glowValue = pow(glowValue, glowExponent);
+	
+	vec3 color = glowValue * windowColor + (1 - glowValue) * BUILDING_COLOR;
+	
+	return LightedColor(color, glowValue);
 }
 
 
-RayHit getBuildingHit21(vec3 rayPoint, vec2 buildingCenterXZ) {
-	float rand1 = rand(buildingCenterXZ);
-	
-	int nWindowsY = MIN_WINDOW_ROWS + int(rand1 * MAX_ADDITIONAL_WINDOW_ROWS);
-	int nWindowsZ = WINDOW_COLS;
-	
-	vec3 buildingCenter = vec3(buildingCenterXZ.x, nWindowsY / 10.0, buildingCenterXZ.y);
-	vec3 buildingB = vec3(HALF_BUILDING_WIDTH, nWindowsY / 10.0, HALF_BUILDING_WIDTH);
-	
-	float blockDistance = getBoxDistance(buildingCenter, buildingB, rayPoint);
-	
-	// Performance
-	if (blockDistance > 0.01) return RayHit(blockDistance, vec3(0));
-	
-	float facadeDistance = blockDistance;
-	
-	RayHit closestWindowHit = RayHit(9999.9, vec3(0));
-	
-	float windowWidth = 0.025;
-	float windowHeight = 0.035;
-	
-	vec3 windowB = vec3(buildingB.x * 1.0, windowHeight, windowWidth);
-	vec3 cutoutB = vec3(buildingB.x * 6, windowHeight, windowWidth);
-	
-	float startY = buildingCenter.y - buildingB.y;
-	float stepY = (2 * buildingB.y) / (nWindowsY + 1);
-	
-	// for (int i = 1; i <= nWindowsY; i++) {
-		// for (int j = -1; j <= 1; j++) {
-			// float windowCenterY = startY + stepY * i;
-			// float windowCenterZ = buildingCenter.z + (buildingB.z / 1.7) * j;
-			
-			// vec3 windowCenter = vec3(buildingCenter.x, windowCenterY, windowCenterZ);
-			
-			// float windowCutout = getSubtractBoxDistance(windowCenter, cutoutB, rayPoint);
-			// facadeDistance = subtractDistances(facadeDistance, windowCutout);
-			
-			// float windowBox = getBoxDistance(windowCenter, windowB, rayPoint);
-			
-			// float rand2 = rand(windowCenter.yz);
-			// vec3 windowColor = rand2 > 0.5 ? WINDOW_ON_COLOR : WINDOW_OFF_COLOR;
-			
-			// RayHit currentWindowHit = RayHit(windowBox, windowColor);
-			
-			// closestWindowHit = getCloserHit(closestWindowHit, currentWindowHit);
-			
-			// windowDistance = addDistances(windowDistance, windowBox);
-		// }
-	// }
-	
-	vec3 facadeColor = vec3(0.3, 0.3, 0.4);
-	vec3 windowColor = vec3(0.8, 0.9, 1);
-	
-	RayHit facadeHit = RayHit(facadeDistance, facadeColor);
-	//RayHit windowHit = RayHit(windowDistance, windowColor);
-	
-	return getCloserHit(facadeHit, closestWindowHit);
-}
-
-
-
-
-
-
-RayHit getBuildingsHit2(vec3 rayPoint) {
+RayResult getBuildingsResult(vec3 rayPoint) {
 	float rowSize = getTileWidth() / ROWS_PER_TILE;
 	
 	vec3 rowModVector = vec3(rowSize, 1, rowSize);
@@ -359,7 +372,11 @@ RayHit getBuildingsHit2(vec3 rayPoint) {
 	float rowBuildingStartX = floor(abs(rayPoint.x) / rowSize) * rowSize + buildingSideSpace;
 	float rowBuildingStartZ = floor(abs(rayPoint.z) / rowSize) * rowSize + buildingSideSpace;
 	
-	float h = 0.9 + rowBuildingStartX * 0.1 + rowBuildingStartZ * 0.1;
+	float test2 = rand(rowBuildingStartX) + rand(rowBuildingStartZ);
+	
+	vec3 t1 = mod(rayPoint, rowModVector);
+	
+	float h = 1.5 - rowBuildingStartX * 0.1 - rowBuildingStartZ * 0.1;
 	
 	h = 0.9;
 	
@@ -391,98 +408,26 @@ RayHit getBuildingsHit2(vec3 rayPoint) {
 	if (rowBuildingStartX < closestBuildingStart) {
 		// TODO: statt buildingSideSpace was anderes -> optimize
 		//return RayHit(myBoxDist, vec3(1, 0, 0.4));
-		return RayHit(dis, vec3(0));
+		return NoHitRayResult(dis);
 	}
 	if (rowBuildingStartZ < closestBuildingStart) {
 		//return RayHit(myBoxDist, vec3(0, 0.4, 1));
-		return RayHit(dis, vec3(0));
+		return NoHitRayResult(dis);
 	}
 	
-	vec3 buildingColor = BUILDING_COLOR;
+	float buildingWidth = rowSize * REL_BUILDING_WIDTH;
 	
-	if ((abs(rowRayPoint.x) < 0.2 || abs(rowRayPoint.z) < 0.2) && rayPoint.y > 0.4 && rayPoint.y < 1.0) {
-		buildingColor = WINDOW_ON_COLOR;
+	LightedColor lightedColor = LightedColor(vec3(0), 0.0);
+	
+	if (myBoxDist < 0.01) {
+		lightedColor = getBuildingColor(buildingWidth, 1.8, rayPoint, rowRayPoint, test2 / 2.0);
 	}
 	
-	return RayHit(myBoxDist, vec3(buildingColor));
-	
-	float buildingRows = floor(CORNER_WIDTH / (MIN_BUILDING_SPACE + BUILDING_WIDTH));
-	
-	float buildingSpace = (CORNER_WIDTH - buildingRows * BUILDING_WIDTH) / buildingRows;
-	
-	float buildingCenterDistance = BUILDING_WIDTH + buildingSpace;
-	
-	
-	RayHit closestHit = FAR_HIT;
-	
-	return FAR_HIT;
-	
-	for (int i = 0; i < 4; i++) {
-		vec2 upperLeftCorner;
-		
-		float negativeOffset = getHalfTileWidth();
-		float positiveOffset = HALF_STREET_WIDTH + SIDEWALK_WIDTH;
-		
-		if (i == 0) upperLeftCorner = vec2(CENTER.x - negativeOffset, CENTER.z - negativeOffset);
-		else if (i == 1) upperLeftCorner = vec2(CENTER.x - negativeOffset, CENTER.z + positiveOffset);
-		else if (i == 2) upperLeftCorner = vec2(CENTER.x + positiveOffset, CENTER.z - negativeOffset);
-		else upperLeftCorner = vec2(CENTER.x + positiveOffset, CENTER.z + positiveOffset);
-		
-		vec3 testBoxCenter = vec3(upperLeftCorner.x + HALF_CORNER_WIDTH, 2, upperLeftCorner.y + HALF_CORNER_WIDTH);
-		vec3 textBoxB = vec3(HALF_CORNER_WIDTH, 2, HALF_CORNER_WIDTH);
-		
-		float testDist = getBoxDistance(testBoxCenter, textBoxB, rayPoint);
-		
-		// 2do: Modulo
-		
-		//return RayHit(testDist, vec3(0.4, 0.9, 1.0));
-		
-		if (testDist > 0.05) {
-			closestHit = RayHit(testDist, vec3(0));
-			continue;
-		}
-		
-		for (int j = 0; j < buildingRows; j++) {
-			for (int k = 0; k < buildingRows; k++) {
-			
-				//if (j > 0 && k > 0 && j < (buildingRows - 1) && k < (buildingRows - 1)) continue;
-				
-				float xOffset = (j + 0.5) * buildingCenterDistance;
-				float zOffset = (k + 0.5) * buildingCenterDistance;
-				
-				vec2 buildingXZ = vec2(upperLeftCorner.x + xOffset, upperLeftCorner.y + zOffset);
-				
-				RayHit buildingHit = getBuildingHit2(rayPoint, buildingXZ);
-				
-				//if (buildingHit.dist < 0.01) return buildingHit;
-				
-				closestHit = getCloserHit(closestHit, buildingHit);
-			}
-		}
-	}
-	
-	return closestHit;
+	return RayResult(myBoxDist, lightedColor.color, lightedColor.lightFactor);
 }
 
 
 
-	
-/*
-void bla() {
-	float stripeLength = 0.04;
-	float stripeWidth = 0.006;
-	
-	float stripeDistance = getBoxDistance(vec3(-100), vec3(1), vec3(1));
-	vec3 stripeB = vec3(stripeWidth, 0.001, stripeLength);
-	
-	for (int i = -10; i <= 10; i++) {
-		vec3 stripeCenter = vec3(-0.5, -0.049, i * 0.3);
-		float singleStripeDistance = getBoxDistance(stripeCenter, stripeB, rayPoint);
-		
-		stripeDistance = addDistances(stripeDistance, singleStripeDistance);
-	}
-}
-*/
 
 
 vec3 getModRayPoint(vec3 rayPoint) {
@@ -495,20 +440,20 @@ vec3 getModRayPoint(vec3 rayPoint) {
 
 
 
-RayHit distFuncWithColor(vec3 rayPoint) {
+RayResult distFuncWithColor(vec3 rayPoint) {
 	vec3 modRayPoint = getModRayPoint(rayPoint);
 	
-	RayHit floorHit = getFloorHit(modRayPoint);
-	RayHit buildingHit = getBuildingsHit2(modRayPoint);
+	RayResult floorRayResult = getFloorResult(modRayPoint);
+	RayResult buildingsRayResult = getBuildingsResult(modRayPoint);
 	
-	return getCloserHit(floorHit, buildingHit);
+	return getCloserRayResult(floorRayResult, buildingsRayResult);
 }
 
 
 float distFunc(vec3 rayPoint) {
-	RayHit rayHit = distFuncWithColor(rayPoint);
+	RayResult rayResult = distFuncWithColor(rayPoint);
 
-	return rayHit.dist;
+	return rayResult.dist;
 }
 
 vec3 getNormal(vec3 point)
@@ -563,6 +508,7 @@ void main()
 	int maxSteps = 500;
 	
 	vec3 color = vec3(0);
+	vec4 color4 = vec4(0);
 	
 	vec3 point = camP;
 	
@@ -572,23 +518,22 @@ void main()
 	
 	float maxDistance = 150;
 	
+	float ff = 0;
+	
 	while (step < maxSteps) {
 		
-		RayHit rayHit = distFuncWithColor(point);
-		float hitDistance = rayHit.dist;
-		vec3 hitColor = rayHit.color;
+		RayResult rayResult = distFuncWithColor(point);
+		float hitDistance = rayResult.dist;
+		vec3 hitColor = rayResult.color;
 		
 		float distanceToCam = distance(camP, point);
 		
-		if (distanceToCam > maxDistance) break;
+		if (distanceToCam > FOG_END) break;
 		
-		if (hitDistance < eps) {
+		if (hitDistance < EPSILON) {
 			hit = true;
 			
 			color = hitColor;
-			
-			
-			
 			
 			vec3 hitNormal = getNormal(point);
 			vec3 toLight = normalize(vec3(-100, 100, -100) - point);
@@ -596,13 +541,19 @@ void main()
 			float lambert = max(dot(hitNormal, toLight), 0.2);
 			
 			
-			color *= lambert;
+			if (rayResult.lightFactor < 0.5) color *= lambert;
 			
 			// test
 			//if (hitColor.b > 0.9) color = hitColor;
 			
 			//color *= max((maxDistance - distanceToCam) / maxDistance, 0);
 			//color = hitNormal;
+			
+			ff = getFogFactor(distanceToCam);
+			
+			color4 = vec4(color, 1.0);
+			//color4 = vec4(color, getFogFactor(distanceToCam));
+			//color4 = vec4(getFogFactor(distanceToCam), color.g, color.b, 1.0);
 			
 			break;
 		}
@@ -612,12 +563,18 @@ void main()
 		step++;
 	}
 	
-	if (!hit) {
+	vec3 bgColor = getBackgroundColor(camDir.xy);
+	
+	color4 = ff * color4 + (1 - ff) * vec4(bgColor, 1.0);
+	
+	if (!hit && false) {
 		//color = vec3(0);
 		color = getBackgroundColor(camDir.xy);
+		color4 = vec4(color, 1.0);
 	}
 	
-	gl_FragColor = vec4(color, 1.0);
+	gl_FragColor = color4;
+	//gl_FragColor = vec4(color, 1.0);
 }
 
 

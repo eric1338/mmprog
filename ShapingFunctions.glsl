@@ -69,10 +69,59 @@ float getMusicFactor(float t) {
 }
 
 
+float mySmoothstep(float value, float zeroStart, float oneEnd) {
+	if (value < zeroStart) return 0.0;
+	if (value > oneEnd) return 1.0;
+	
+	return (value - zeroStart) / (oneEnd - zeroStart);
+}
+
+float mySmoothstep2(float value, float zeroStart, float stepSize) {
+	return mySmoothstep(value, zeroStart, zeroStart + stepSize);
+}
+
+float myReverseSmoothstep(float value, float oneStart, float zeroEnd) {
+	return 1 - mySmoothstep(value, oneStart, zeroEnd);
+}
+
+float myReverseSmoothstep2(float value, float oneStart, float stepSize) {
+	return myReverseSmoothstep(value, oneStart, oneStart + stepSize);
+}
+
+float Xf(float val, float solid, float interpol, float space, float end) {
+	float unitSize = solid + space;
+	
+	float mMod = mod(abs(val) + (solid / 2.0), unitSize);
+	
+	float glowingPartSize = solid + interpol;
+	
+	if (abs(val) > ((end / 2.0) - interpol)) {
+		return 0.0;
+	}
+	
+	if (mMod < solid) {
+		return 1.0;
+	}
+	
+	if (mMod < glowingPartSize) {
+		return myReverseSmoothstep2(mMod, solid, interpol);
+	}
+	
+	if (mMod > (unitSize - interpol)) {
+		return mySmoothstep2(mMod, unitSize - interpol, interpol);
+	}
+	
+	return 0.0;
+}
+
+
 
 float function(float x)
 {
     float y = x;
+	
+	y = Xf(x + 0.9, 1.8, 0.3, 0.8, 10);
+	
 	// y = sin(x);
 	// y = step(-2, x) ;
 	// y = smoothstep(-3, 3, x);
@@ -106,7 +155,7 @@ float function(float x)
 	// y = rand(x);
 	// y = noise(x);
 	
-	y = getMusicFactor(x);
+	//y = getMusicFactor(x);
 	
 	// y = gnoise(x);
 	// y = sin(x) + 0.1 * sin(16*x + iMouse.x * 0.1);

@@ -25,12 +25,12 @@ vec2 rand2(vec2 seed)
 }
 
 
-const vec2 CENTER = vec2(1, 0.5);
+const vec2 CENTER = vec2(0.5, 0.5);
 
 
-const float NUMBER_OF_CIRCLES = 15;
-const float CIRCLE_SIZE = 0.05;
-const float CIRCLE_STEP = 0.1;
+const float NUMBER_OF_CIRCLES = 10;
+const float CIRCLE_THICKNESS = 0.03;
+const float CIRCLE_STEP = 0.06;
 
 bool isNotInCircle(float start, float end, vec2 coord) {
 	float dist = distance(CENTER, coord);
@@ -39,7 +39,26 @@ bool isNotInCircle(float start, float end, vec2 coord) {
 }
 
 
-float getCircleValue(float start, float end, vec2 randVec, vec2 coord) {
+
+vec2 getTwelve(float randStart, float randSpeed) {
+	float factor = 1;
+	
+	if (randSpeed > 0.5) {
+		factor = -1;
+		randSpeed -= 0.5;
+	}
+	
+	float x = randStart * 6.28 + iGlobalTime * (randSpeed + 0.2);
+	
+	x *= factor;
+	
+	vec2 cn = vec2(sin(x), cos(x)) * 0.5;
+	
+	return cn;
+}
+
+
+float getCircleValue(float start, float end, float size, float randStart, float randSpeed, vec2 coord) {
 	if (isNotInCircle(start, end, coord)) return 0;
 	
 	float r1 = rand(vec2(start, end));
@@ -50,12 +69,15 @@ float getCircleValue(float start, float end, vec2 randVec, vec2 coord) {
 	
 	vec2 timeVec = vec2(iGlobalTime, iGlobalTime) * 0.1;
 	
-	vec2 twelve = normalize(rand2(randVec) + timeVec - CENTER);
+	//vec2 twelve = normalize(rand2(randVec) + timeVec - CENTER);
+	
+	vec2 twelve = getTwelve(randStart, randSpeed);
+	
 	vec2 curr = normalize(coord - CENTER);
 	
 	float x = dot(twelve, curr) * 0.5 + 0.5;
 	
-	float circleSize = 0.6;
+	float circleSize = size;
 	
 	return (x < circleSize) ? 1 : -1;
 }
@@ -64,13 +86,25 @@ float getCirclesValue(vec2 coord) {
 	float circleValue = 0;
 	
 	for (float i = 1; i <= NUMBER_OF_CIRCLES; i++) {
-		float zoomFactor = max(4 - (iGlobalTime / 1), 1.0);
+		float zoomFactor = max(1.4 - (iGlobalTime * 0.05), 0.8);
 		
 		float start = i * CIRCLE_STEP * zoomFactor;
-		float size = CIRCLE_SIZE * zoomFactor;
-		vec2 randVec = vec2(i * CIRCLE_STEP, i * CIRCLE_STEP + CIRCLE_SIZE);
+		float thickness = CIRCLE_THICKNESS * zoomFactor;
 		
-		circleValue += getCircleValue(start, start + size, randVec, coord);
+		float fr = fract(iGlobalTime);
+		
+		if (fr < 0.1) {
+			//start += fr * 0.1;
+		} else if (fr < 0.2) {
+			//start += (0.2 - fr) * 0.1;
+		}
+		
+		float randStart = rand(i * 0.4);
+		float randSpeed = rand(i * 0.7);
+		
+		float size = clamp(0.05 * (iGlobalTime - i * 0.3), 0.0, 0.6);
+		
+		circleValue += getCircleValue(start, start + thickness, size, randStart, randSpeed, coord);
 	}
 	
 	return circleValue;
@@ -84,10 +118,12 @@ vec3 getBGColor(vec2 coord) {
 	float dx1 = coord.y * yf + coord.x * xf;
 	float dx2 = (1 - coord.y) * yf + (1 - coord.x) * xf;
 	
-	return vec3(1, 0.0, 0.54) * dx1 + vec3(0.5, 0.0, 0.2) * dx2;
-	//return vec3(0, 0.7, 1) * dx1 + vec3(0, 0.4, 1.0) * dx2;
+	//return vec3(1, 0.0, 0.54) * dx1 + vec3(0.5, 0.0, 0.2) * dx2;
+	return vec3(0, 0.7, 1) * dx1 + vec3(0, 0.4, 1.0) * dx2;
 	//return vec3(0.0, 0.9, 0.8) * dx1 + vec3(0.0, 0.5, 0.4) * dx2;
 }
+
+
 
 
 void main() {
