@@ -9,28 +9,11 @@ uniform float iGlobalTime;
 
 const float EPSILON = 0.001;
 
-const float PI = 3.1415926535897932384626433832795;
-const float TWOPI = 2 * PI;
 
-float rand(float seed)
-{
-	return fract(sin(seed) * 1231534.9);
-}
-
-float rand(vec2 seed) { 
-    return rand(dot(seed, vec2(12.9898, 783.233)));
-}
-
-//random vector with length 1
-vec2 rand2(vec2 seed)
-{
-	float r = rand(seed) * TWOPI;
-	return vec2(cos(r), sin(r));
-}
-
+const float MAX_STEPS = 500;
 
 const float FOG_START = 10;
-const float FOG_END = 40;
+const float FOG_END = 50;
 
 float getFogFactor(float distance) {
 	if (distance < FOG_START) return 1;
@@ -40,9 +23,9 @@ float getFogFactor(float distance) {
 }
 
 
-const float STREET_WIDTH = 1.0;
+const float STREET_WIDTH = 1.6;
 const float SIDEWALK_WIDTH = 0.2;
-const float CORNER_WIDTH = 4.0;
+const float CORNER_WIDTH = 3.9;
 
 const float SIDEWALK_DEPTH = 0.01;
 const float CORNER_DEPTH = 0.0;
@@ -53,9 +36,28 @@ const vec3 CENTER = vec3(0.0);
 const float FLOOR_BLOCK_HEIGHT = 0.05;
 
 
-const float ROWS_PER_TILE = 7;
+const float ROWS_PER_TILE = 6;
 const float REL_BUILDING_WIDTH = 0.8;
 const float MIN_MARGIN_TO_SIDEWALK = 0.05;
+
+
+const float MINIMUM_WINDOW_ROWS = 8;
+const float MAXIMUM_ADDITIONAL_WINDOW_ROWS = 5;
+const float WINDOWS_PER_ROW = 5;
+
+const float WINDOW_WIDTH = 0.12;
+const float WINDOW_HEIGHT = 0.25;
+
+const float VERTICAL_WINDOW_SPACE = 0.2;
+
+const float GROUND_LEVEL_HEIGHT = 0.3;
+
+const float WINDOW_ON_THRESHOLD = 1.0;
+
+const float X_SEED = 6.97;
+const float Y_SEED = 4.42;
+const float Z_SEED = 7.43;
+const float MINUS_SEED_FACTOR = 4.15;
 
 
 const vec3 STREET_COLOR = vec3(0.1);
@@ -67,12 +69,16 @@ const vec3 BUILDING_COLOR = vec3(0.2);
 const vec3 WINDOW_ON_COLOR = vec3(0.9);
 const vec3 WINDOW_OFF_COLOR = vec3(0.25);
 
+const float GLOW_LENGTH = 0.04;
+const float WINDOW_ON_EXPONENT = 4;
+const float WINDOW_OFF_EXPONENT = 8;
 
 const float HALF_STREET_WIDTH = STREET_WIDTH / 2.0;
 const float HALF_SIDEWALK_WIDTH = SIDEWALK_WIDTH / 2.0;
 const float HALF_CORNER_WIDTH = CORNER_WIDTH / 2.0;
 const float HALF_WHOLE_CORNER_WIDTH = (SIDEWALK_WIDTH + CORNER_WIDTH) / 2.0;
 const float HALF_FLOOR_BLOCK_HEIGHT = FLOOR_BLOCK_HEIGHT / 2.0;
+const float HALF_WINDOW_WIDTH = WINDOW_WIDTH / 2.0;
 
 
 float getTileWidth() {
@@ -101,7 +107,7 @@ RayResult NoLightRayResult(float dist, vec3 color) {
 }
 
 RayResult NoHitRayResult(float dist) {
-	return RayResult(dist, vec3(0), 0.0);
+	return RayResult(dist, vec3(0, 0, 1), 0.0);
 }
 
 
@@ -240,31 +246,6 @@ RayResult getFloorResult(vec3 rayPoint) {
 }
 
 
-const float MINIMUM_WINDOW_ROWS = 4;
-const float WINDOWS_PER_ROW = 5;
-
-const float WINDOW_WIDTH = 0.06;
-const float WINDOW_HEIGHT = 0.25;
-
-const float GROUND_LEVEL_HEIGHT = 0.3;
-
-const float GLOW_LENGTH = 0.04;
-
-const float HALF_WINDOW_WIDTH = WINDOW_WIDTH / 2.0;
-
-
-
-float WINDOW_ON_EXPONENT = 4;
-float WINDOW_OFF_EXPONENT = 8;
-
-float WINDOW_ON_THRESHOLD = 1.0;
-
-float X_SEED = 3;
-float Y_SEED = 7;
-float Z_SEED = 4;
-float MINUS_SEED_FACTOR = 3;
-
-
 
 struct WindowValue {
 	float glowFactor;
@@ -278,7 +259,6 @@ WindowValue getWindowValue(float value, float windowSize, float spaceBetweenWind
 	float modValue = mod(value, unitSize);
 	
 	float randFactor = rand(floor((value + GLOW_LENGTH) / unitSize) + seed);
-	
 	
 	float glowingPartSize = windowSize + GLOW_LENGTH;
 	
@@ -304,7 +284,6 @@ WindowValue getWindowValue(float value, float windowSize, float spaceBetweenWind
 }
 
 
-
 WindowValue getHorizontalWindowValue(float horizontalValue, float buildingWidth, float spaceBetweenWindows, float seed) {
 	float value = abs(horizontalValue) + HALF_WINDOW_WIDTH;
 	
@@ -317,15 +296,15 @@ WindowValue getHorizontalWindowValue(float horizontalValue, float buildingWidth,
 	return getWindowValue(value, WINDOW_WIDTH, spaceBetweenWindows, buildingWidth / 2.0, newSeed);
 }
 
-WindowValue getVerticalWindowValue(float verticalValue, float buildingHeight, float spaceBetweenWindows, float seed) {
+WindowValue getVerticalWindowValue(float verticalValue, float buildingHeight, float seed) {
 	if (verticalValue < (GROUND_LEVEL_HEIGHT - GLOW_LENGTH)) return WindowValue(0.0, 0.0);
 	
 	float value = verticalValue - GROUND_LEVEL_HEIGHT;
 	
-	return getWindowValue(value, WINDOW_HEIGHT, spaceBetweenWindows, buildingHeight - GROUND_LEVEL_HEIGHT, seed);
+	return getWindowValue(value, WINDOW_HEIGHT, VERTICAL_WINDOW_SPACE, buildingHeight - GROUND_LEVEL_HEIGHT, seed);
 }
 
-LightedColor getBuildingColor(float buildingWidth, float buildingHeight, vec3 rayPoint, vec3 rowRayPoint, float seed) {
+LightedColor getBuildingColor(float buildingWidth, float buildingHeight, float windowRows, vec3 rayPoint, vec3 rowRayPoint, float seed) {
 	float totalWindowWidth = WINDOWS_PER_ROW * WINDOW_WIDTH;
 	float horizontalSpaceBetweenWindows = (buildingWidth - totalWindowWidth) / (WINDOWS_PER_ROW + 1);
 	
@@ -338,10 +317,7 @@ LightedColor getBuildingColor(float buildingWidth, float buildingHeight, vec3 ra
 	
 	WindowValue hWindowValue = xWindowValue.glowFactor < zWindowValue.glowFactor ? zWindowValue : xWindowValue;
 	
-	float totalWindowHeight = MINIMUM_WINDOW_ROWS * WINDOW_HEIGHT;
-	float verticalSpaceBetweenWindows = (buildingHeight - GROUND_LEVEL_HEIGHT - totalWindowHeight) / MINIMUM_WINDOW_ROWS;
-	
-	WindowValue vWindowValue = getVerticalWindowValue(rayPoint.y, buildingHeight, verticalSpaceBetweenWindows, ySeed);
+	WindowValue vWindowValue = getVerticalWindowValue(rayPoint.y, buildingHeight, ySeed);
 	
 	float glowValue = hWindowValue.glowFactor * vWindowValue.glowFactor;
 	
@@ -358,72 +334,66 @@ LightedColor getBuildingColor(float buildingWidth, float buildingHeight, vec3 ra
 }
 
 
-RayResult getBuildingsResult(vec3 rayPoint) {
+RayResult getBuildingsResult(vec3 rayPoint, vec3 modRayPoint) {
 	float rowSize = getTileWidth() / ROWS_PER_TILE;
 	
 	vec3 rowModVector = vec3(rowSize, 1, rowSize);
 	
-	vec3 rowModRayPoint = mod(rayPoint, rowModVector) - 0.5 * rowModVector;
+	vec3 rowModRayPoint = mod(modRayPoint, rowModVector) - 0.5 * rowModVector;
 	
-	vec3 rowRayPoint = vec3(rowModRayPoint.x, rayPoint.y, rowModRayPoint.z);
+	vec3 rowRayPoint = vec3(rowModRayPoint.x, modRayPoint.y, rowModRayPoint.z);
 	
 	float buildingSideSpace = (rowSize - rowSize * REL_BUILDING_WIDTH) / 2.0;
 	
-	float rowBuildingStartX = floor(abs(rayPoint.x) / rowSize) * rowSize + buildingSideSpace;
-	float rowBuildingStartZ = floor(abs(rayPoint.z) / rowSize) * rowSize + buildingSideSpace;
+	float fixedBuildingX = floor(modRayPoint.x / rowSize);
+	float fixedBuildingZ = floor(modRayPoint.z / rowSize);
 	
-	float test2 = rand(rowBuildingStartX) + rand(rowBuildingStartZ);
+	float fixedTileX = floor(rayPoint.x / getTileWidth());
+	float fixedTileZ = floor(rayPoint.z / getTileWidth());
 	
-	vec3 t1 = mod(rayPoint, rowModVector);
+	float seed = rand(fixedBuildingX * 10) + rand(fixedBuildingZ * 10);
+	seed = rand(seed + rand(fixedTileX) + rand(fixedTileZ));
 	
-	float h = 1.5 - rowBuildingStartX * 0.1 - rowBuildingStartZ * 0.1;
+	float floorSize = WINDOW_HEIGHT + VERTICAL_WINDOW_SPACE;
 	
-	h = 0.9;
+	float additionalFloors = round(rand(seed) * MAXIMUM_ADDITIONAL_WINDOW_ROWS);
+	float numberOfFloors = MINIMUM_WINDOW_ROWS + additionalFloors;
 	
+	float buildingHeight = numberOfFloors * floorSize + GROUND_LEVEL_HEIGHT;
 	
 	float buildingBLength = rowSize * REL_BUILDING_WIDTH / 2.0;
 	
-	vec3 myBoxC = vec3(0, h, 0);
-	vec3 myBoxB = vec3(buildingBLength, h, buildingBLength);
+	vec3 buildingCenter = vec3(0, buildingHeight / 2.0, 0);
+	vec3 buildingB = vec3(buildingBLength, buildingHeight / 2.0, buildingBLength);
 	
+	float buildingDistance = getBoxDistance(buildingCenter, buildingB, rowRayPoint);
 	
-	float myBoxDist = getBoxDistance(myBoxC, myBoxB, rowRayPoint);
+	float rowBuildingStartX = floor(abs(modRayPoint.x) / rowSize) * rowSize + buildingSideSpace;
+	float rowBuildingStartZ = floor(abs(modRayPoint.z) / rowSize) * rowSize + buildingSideSpace;
 	
 	float closestBuildingStart = HALF_STREET_WIDTH + SIDEWALK_WIDTH + MIN_MARGIN_TO_SIDEWALK;
 	
-	float dis1 = (closestBuildingStart + buildingSideSpace) - abs(rayPoint.x);
-	float dis2 = (closestBuildingStart + buildingSideSpace) - abs(rayPoint.z);
-	
-	float dis = min(dis1, dis2);
-	
-	if (dis1 < 0) dis = dis2;
-	if (dis2 < 0) dis = dis1;
-	
-	//dis = dis1;
-	
-	//dis -= 0.1;
-	
-	dis = buildingSideSpace;
-	
 	if (rowBuildingStartX < closestBuildingStart) {
 		// TODO: statt buildingSideSpace was anderes -> optimize
-		//return RayHit(myBoxDist, vec3(1, 0, 0.4));
-		return NoHitRayResult(dis);
+		return NoHitRayResult(buildingSideSpace);
 	}
 	if (rowBuildingStartZ < closestBuildingStart) {
-		//return RayHit(myBoxDist, vec3(0, 0.4, 1));
-		return NoHitRayResult(dis);
+		return NoHitRayResult(buildingSideSpace);
+	}
+	
+	if (rayPoint.y > buildingHeight && buildingDistance > buildingSideSpace) {
+		return NoHitRayResult(buildingSideSpace);
 	}
 	
 	float buildingWidth = rowSize * REL_BUILDING_WIDTH;
 	
-	LightedColor lightedColor = LightedColor(vec3(0), 0.0);
+	LightedColor lightedColor = LightedColor(vec3(0, 0, 1), 0.0);
 	
-	if (myBoxDist < 0.01) {
-		lightedColor = getBuildingColor(buildingWidth, 1.8, rayPoint, rowRayPoint, test2 / 2.0);
+	if (buildingDistance < 0.01) {
+		lightedColor = getBuildingColor(buildingWidth, buildingHeight, numberOfFloors, rayPoint, rowRayPoint, seed);
 	}
 	
-	return RayResult(myBoxDist, lightedColor.color, lightedColor.lightFactor);
+	return RayResult(buildingDistance, lightedColor.color, lightedColor.lightFactor);
 }
 
 
@@ -444,7 +414,7 @@ RayResult distFuncWithColor(vec3 rayPoint) {
 	vec3 modRayPoint = getModRayPoint(rayPoint);
 	
 	RayResult floorRayResult = getFloorResult(modRayPoint);
-	RayResult buildingsRayResult = getBuildingsResult(modRayPoint);
+	RayResult buildingsRayResult = getBuildingsResult(rayPoint, modRayPoint);
 	
 	return getCloserRayResult(floorRayResult, buildingsRayResult);
 }
@@ -491,6 +461,7 @@ vec3 getBackgroundColor(vec2 coord) {
 	blueFactor *= 0.5;
 	
 	vec3 bgColor = vec3(0.0, 0.2 + greenFactor, 0.5 + blueFactor) * 0.4;
+	//vec3 bgColor = vec3(0.2 + greenFactor, 0.0, 0.5 + blueFactor) * 0.4;
 	
 	vec3 color = value * white + (1 - value) * bgColor;
 
@@ -505,9 +476,7 @@ void main()
 	vec3 camP = calcCameraPos();
 	vec3 camDir = calcCameraRayDir(80.0, gl_FragCoord.xy, iResolution);
 	
-	int maxSteps = 500;
-	
-	vec3 color = vec3(0);
+	vec3 color = vec3(1, 0, 0);
 	vec4 color4 = vec4(0);
 	
 	vec3 point = camP;
@@ -516,11 +485,9 @@ void main()
 	
 	bool hit = false;
 	
-	float maxDistance = 150;
-	
 	float ff = 0;
 	
-	while (step < maxSteps) {
+	while (step < MAX_STEPS) {
 		
 		RayResult rayResult = distFuncWithColor(point);
 		float hitDistance = rayResult.dist;
@@ -572,6 +539,8 @@ void main()
 		color = getBackgroundColor(camDir.xy);
 		color4 = vec4(color, 1.0);
 	}
+	
+	//color4 *= vec4(1.05, 0.9, 1.1, 1.0);
 	
 	gl_FragColor = color4;
 	//gl_FragColor = vec4(color, 1.0);

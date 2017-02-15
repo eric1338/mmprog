@@ -1,64 +1,104 @@
-///idea from http://thebookofshaders.com/edit.php#09/marching_dots.frag
 #version 330
+
+#include "mylib.glsl"
+
 
 uniform vec2 iResolution;
 uniform float iGlobalTime;
-uniform vec3 iMouse;
 
-const float PI = 3.1415926535897932384626433832795;
-const float TWOPI = 2 * PI;
-const float EPSILON = 10e-4;
-
-float rand(float seed)
-{
-	return fract(sin(seed) * 1231534.9);
-}
-
-float rand(vec2 seed) { 
-    return rand(dot(seed, vec2(12.9898, 783.233)));
-}
-
-//random vector with length 1
-vec2 rand2(vec2 seed)
-{
-	float r = rand(seed) * TWOPI;
-	return vec2(cos(r), sin(r));
-}
+const float EPSILON = 0.0001;
 
 
-float nRows = 25;
-float visibilityThreshold = 0.85;
 
-float getShininess(vec2 coord) {
-	float rn = rand(coord);
+const float N_ROWS = 25;
+
+const float VISIBILITY_THRESHOLD = 0.8;
+
+const float OFFSET_FACTOR = 0.1;
+
+const float SHININESS_TIME_FACTOR = 0.2;
+
+const float SHININESS_EXPONENT = 128;
+
+const float SHININESS_FACTOR = 2.0;
+
+
+
+const float FARTHEST_STAR_SIZE = 0.2;
+
+const float DISTANCE_BETWEEN_LAYERS = 0.3;
+
+const float INTRA_LAYER_DISTANCE = 0.2;
+
+
+float getShininess(vec2 fixedGridPos) {
+	float randVal = rand(fixedGridPos + vec2(0.33, 0.82));
 	
-	float pr = rn * 6.28 + iGlobalTime * 0.2;
+	float pr = randVal * 6.28 + iGlobalTime * SHININESS_TIME_FACTOR;
 	
-	return pow(max(sin(pr), 0.0), 128);
+	return pow(max(sin(pr), 0.0), SHININESS_EXPONENT);
 }
 
-float getStarValue(vec2 coord) {
+float getStarValueFromLayer(int layer, vec2 coord) {
 	
-	vec2 posInGrid = coord * nRows;
+	coord.y += iGlobalTime * (0.01 + layer * 0.004);
+	
+	vec2 posInGrid = coord * N_ROWS;
 	vec2 fixedGridPos = floor(posInGrid);
 	vec2 middle = fixedGridPos + vec2(0.5);
 	
-	float randomValue = rand(fixedGridPos);
-	
-	if (rand(randomValue) < visibilityThreshold) return 0;
-	
 	vec2 offset = rand2(fixedGridPos) - vec2(0.5);
 	
-	vec2 starPos = middle + offset * 0.1;
+	vec2 starPos = middle + offset * OFFSET_FACTOR;
 	
-	float shininess = getShininess(fixedGridPos + vec2(1.337));
-	float size = shininess * 3;
+	// test
+	//if (fract(posInGrid.x) < 0.1 || fract(posInGrid.y) < 0.1) return 0.2;
 	
-	float distanceFactor = (9 - 5 * randomValue - size);
+	//if (mod(coord.x, 0.3) < 0.005) return 0.2;
 	
-	float dist = 1 - distance(posInGrid, starPos) * distanceFactor;
+	float randomValue = rand(fixedGridPos * (layer + 0.7));
 	
-	return pow(max(dist, 0.0), 12 - 2 * shininess);
+	if (rand(randomValue) < VISIBILITY_THRESHOLD) return 0;
+	
+	float lfB = layer * 0.3;
+	float rhB = (layer + 1) * 0.3;
+	
+	//if (coord.x < lfB || coord.x > rhB) return 0.0;
+	
+	
+	float size = 0;
+	float distanceFactor = 8 - 5 * randomValue - size;
+	
+	float dist = distance(posInGrid, starPos);
+	
+	
+	float starSize = FARTHEST_STAR_SIZE + layer * DISTANCE_BETWEEN_LAYERS;
+	
+	float intraDistanceFactor = rand(randomValue + 1);
+	float intraLayerOffset = INTRA_LAYER_DISTANCE * intraDistanceFactor;
+	
+	starSize += intraLayerOffset;
+	
+	
+	float shininess = getShininess(fixedGridPos) * SHININESS_FACTOR;
+	
+	float exponent = starSize + shininess;
+	
+	float starValue = myReverseSmoothstep2(dist, 0, exponent);
+	
+	starValue = pow(starValue, 40);
+	
+	return starValue;
+}
+
+float getStarValue(vec2 coord) {
+	float starValue = 0.0;
+	
+	for (int i = 0; i < 4; i++) {
+		starValue = max(starValue, getStarValueFromLayer(i, coord));
+	}
+	
+	return starValue;
 }
 
 float getShootingStarValue(vec2 coord) {
