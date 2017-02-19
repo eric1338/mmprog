@@ -120,7 +120,10 @@ float function(float x)
 {
     float y = x;
 	
-	y = Xf(x + 0.9, 1.8, 0.3, 0.8, 10);
+	//y = Xf(x + 0.9, 1.8, 0.3, 0.8, 10);
+	
+	y = smoothstep(4, 1, x);
+	//y = mySmoothstep(x, 1, 4);
 	
 	// y = sin(x);
 	// y = step(-2, x) ;
