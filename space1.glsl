@@ -47,7 +47,7 @@ float getStarValueFromLayer(int layer, vec2 coord) {
 	
 	vec2 newCoord = coord + vec2(layer * LAYER_OFFSET);
 	
-	newCoord.x += iGlobalTime * (0.01 + layer * 0.004);
+	newCoord.y += iGlobalTime * (0.01 + layer * 0.004);
 	
 	vec2 posInGrid = newCoord * N_ROWS;
 	vec2 fixedGridPos = floor(posInGrid);
@@ -107,16 +107,17 @@ float getStarValue(vec2 coord) {
 	return starValue;
 }
 
+const float SHOOTING_STAR_THICKNESS = 0.0012;
 
-float drawLine(vec2 pointA, vec2 pointB, vec2 coord) {
-	float thickness = 0.0003;
+float getLineValue(vec2 pointA, vec2 pointB, vec2 coord) {
+	float thickness = 0.002;
 	
 	float sideA = length(coord - pointB);
 	float sideB = length(pointA - coord);
 	float sideC = length(pointB - pointA);
 	
 	if (sideA >= sideC || sideB >= sideC) {
-		return mix(1.0, 0.0, smoothstep(0.1 * thickness, 2 * thickness, sideA * 0.5));
+		return mix(1.0, 0.0, smoothstep(0.1 * SHOOTING_STAR_THICKNESS, 2 * SHOOTING_STAR_THICKNESS, sideA * 0.5));
 	
 		//return 0.0;
 	}
@@ -127,23 +128,17 @@ float drawLine(vec2 pointA, vec2 pointB, vec2 coord) {
 	
 	float height = area / sideC;
 	
-	return mix(1.0, 0.0, smoothstep(0.1 * thickness, 2 * thickness, height));
+	float wholeLine = mix(1.0, 0.0, smoothstep(0.1 * SHOOTING_STAR_THICKNESS, 2 * SHOOTING_STAR_THICKNESS, height));
 	
-	//if (height < 0.002) return (0.002 - height) * 500;
-	
-	//return 0;
+	return wholeLine * (distance(coord, pointA) / distance(pointA, pointB));
 }
 
-const float SHOOTING_STAR_THICKNESS = 0.3;
 
 const float SHOOTING_STAR_PERIOD = 4.0;
 
 const float SHOOTING_STAR_EXPONENT = 16.0;
 
 float getShootingStarValue(vec2 coord) {
-	
-	float period = 4;
-	
 	float fixedTime = floor(iGlobalTime / SHOOTING_STAR_PERIOD);
 	float partialTime = mod(iGlobalTime, SHOOTING_STAR_PERIOD);
 	
@@ -156,89 +151,27 @@ float getShootingStarValue(vec2 coord) {
 	
 	vec2 starPos = startingPos + direction * partialTime * 0.1;
 	
-	//float val = max(0.05 - distance(coord, starPos), 0);
-	
-	float orthFactor = 0.001;
-	vec2 stp1 = starPos + vec2(-direction.y, direction.x) * orthFactor;
-	vec2 stp2 = starPos + vec2(direction.y, -direction.x) * orthFactor;
-	
-	float distanceVal = pow(max(0.1 - distance(coord, starPos), 0), 2);
-	
-	float trailVal1 = dot(direction, normalize(starPos - coord));
-	float trailVal2 = max(dot(direction, normalize(stp1 - coord)), 0);
-	float trailVal3 = max(dot(direction, normalize(stp2 - coord)), 0);
-	
-	float trailVal = max(trailVal1, max(trailVal2, trailVal3));
-	trailVal = pow(trailVal, 256);
-	
-	//if (trailVal1 < 0.005) trailVal = 0;
-	
-	//if (distance(coord, starPos) < 0.005) return 1;
-	//if (distance(coord, stp1) < 0.005) return 1;
-	//if (distance(coord, stp2) < 0.005) return 1;
-	
-	float val = distanceVal * trailVal;
-	
-	val = pow(val, 0.3);
-	
-	//if (trailVal1 < 0) val = 0;
+	vec2 p2 = starPos + direction * 0.1;
 	
 	float visibility = sin(partialTime * (3.14 / SHOOTING_STAR_PERIOD));
 	visibility = pow(visibility, SHOOTING_STAR_EXPONENT);
 	
-	//visibility = 1;
-
-	return val * visibility;
+	return visibility * getLineValue(starPos, p2, coord);
 }
 
-const float bigNumber = 10000.0;
 
-float quad(float a)
-{
-	return a * a;
-}
 
-//M = center of sphere
-//r = radius of sphere
-//O = origin of ray
-//D = direction of ray
-//return t of smaller hit point
-float sphere(vec3 M, float r, vec3 O, vec3 D)
-{
-	vec3 MO = O - M;
-	float root = quad(dot(D, MO))- quad(length(D)) * (quad(length(MO)) - quad(r));
-	//does ray miss the sphere?
-	if(root < EPSILON)
-	{
-		//return something negative
-		return -bigNumber;
-	}
-	//ray hits the sphere -> calc t of hit point(s)
-	float p = -dot(D, MO);
-	float q = sqrt(root);
-    return (p - q) > 0.0 ? p - q : p + q;
-}
-
-//M = center of sphere
-//P = some point in space
-// return normal of sphere when looking from point P
-vec3 sphereNormal(vec3 M, vec3 P)
-{
+vec3 sphereNormal(vec3 M, vec3 P) {
 	return normalize(P - M);
 }
 
-
 float sSphere(vec3 point, vec3 center, float radius) {
-    return length(point - center) - radius;
-}
-
-float uSphere(vec3 point, vec3 center, float radius) {
-    return max(0.0, sSphere(point, center, radius));
+	return length(point - center) - radius;
 }
 
 
 
-vec3 PLANET_CENTER = vec3(0, 0, 5);
+vec3 PLANET_CENTER = vec3(0, 0.4, 5) + iGlobalTime * vec3(0, -0.1, 0);
 
 const float PLANET_RADIUS = 1.2;
 
@@ -254,8 +187,7 @@ const vec3 LIGHT_DIRECTION = vec3(-1, 1, -1);
 
 
 
-float noise(vec2 coord)
-{
+float noise(vec2 coord) {
 	vec2 i = floor(coord); // integer position
 
 	//random value at nearest integer positions
@@ -275,8 +207,7 @@ float noise(vec2 coord)
 
 
 
-float fBm(vec2 coord)
-{
+float fBm(vec2 coord) {
 	// Properties
 	int octaves = 6;
 	float lacunarity = 2.5;
@@ -284,13 +215,14 @@ float fBm(vec2 coord)
 	// Initial values
 	float amplitude = 0.5;
 	float value = 0;
+	
 	// Loop of octaves
-	for (int i = 0; i < octaves; ++i)
-	{
+	for (int i = 0; i < octaves; ++i) {
 		value += amplitude * noise(coord);
 		coord *= lacunarity;
 		amplitude *= gain;
 	}
+	
 	return value;
 }
 
@@ -373,6 +305,35 @@ vec4 getPlanetColor(vec2 coord) {
 }
 
 
+vec3 getTwoColorBackground(vec2 coord, vec3 color1, vec3 color2) {
+	float f1 = cos(coord.x + 0.2);
+	float f2 = cos(coord.y + 0.1);
+	
+	//return coord.x < 0.8 ? color1 : color2;
+	
+	float color1Factor = f1 * 0.5 + f2 * 0.5;
+	float color2Factor = 1 - color1Factor;
+	
+	//return vec3(1);
+	
+	color1Factor *= 0.55;
+	color2Factor *= 0.55;
+	
+	return color1 * 0.25 + color1 * color1Factor + color2 * 0.25 + color2 * color2Factor;
+	//return vec3(0.0, 0.1 + greenFactor, 0.4 + blueFactor) * 0.4;
+}
+
+
+const vec3 BG_COLOR_1 = vec3(0.0, 0.6, 0.4) * 1.0;
+const vec3 BG_COLOR_2 = vec3(0.0, 0.2, 0.8) * 1.0;
+
+//const vec3 BG_COLOR_1 = vec3(0.0, 0.6, 0.4);
+//const vec3 BG_COLOR_2 = vec3(0.0, 0.2, 0.8);
+
+//const vec3 BG_COLOR_1 = vec3(0.5, 0.15, 0.33);
+//const vec3 BG_COLOR_2 = vec3(0.16, 0.38, 0.56);
+
+
 vec3 getBackgroundColor(vec2 coord) {
 	
 	float f1 = cos(coord.x + 0.2);
@@ -385,11 +346,14 @@ vec3 getBackgroundColor(vec2 coord) {
 	greenFactor *= 0.5;
 	blueFactor *= 0.5;
 	
-	vec3 bgColor = vec3(0.0, 0.1 + greenFactor, 0.4 + blueFactor) * 0.4;
+	//vec3 bgColor = vec3(0.0, 0.1 + greenFactor, 0.4 + blueFactor) * 0.4;
+	
+	vec3 bgColor = getTwoColorBackground(coord, BG_COLOR_1, BG_COLOR_2) * 0.7;
 	
 	float myFbm = fBm(coord);
+	//myFbm = 0;
 	
-	return bgColor + vec3(myFbm) * 0.3;
+	return bgColor + vec3(0.8, 0.9, 1) * myFbm * 0.4;
 }
 
 

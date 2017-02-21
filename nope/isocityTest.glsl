@@ -315,17 +315,6 @@ RayResult getBuildingsResult(vec3 rayPoint, vec3 modRayPoint) {
 	
 	float closestBuildingStart = HALF_STREET_WIDTH + SIDEWALK_WIDTH + MIN_MARGIN_TO_SIDEWALK;
 	
-	if (rowBuildingStartX < closestBuildingStart) {
-		// TODO: statt buildingSideSpace was anderes -> optimize
-		return NoHitRayResult(buildingSideSpace);
-	}
-	if (rowBuildingStartZ < closestBuildingStart) {
-		return NoHitRayResult(buildingSideSpace);
-	}
-	
-	if (rayPoint.y > buildingHeight && buildingDistance > buildingSideSpace) {
-		return NoHitRayResult(buildingSideSpace);
-	}
 	
 	float buildingWidth = rowSize * REL_BUILDING_WIDTH;
 	
@@ -443,6 +432,7 @@ void main()
 			vec3 toLight = normalize(vec3(-100, 100, -100) - point);
 			
 			float lambert = max(dot(hitNormal, toLight), 0.2);
+			
 			
 			if (rayResult.lightFactor < 0.5) color *= lambert;
 			

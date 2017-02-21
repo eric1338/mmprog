@@ -233,20 +233,99 @@ float test(vec2 coord) {
 }
 
 
+
+const float BOX_MIN_HEIGHT = 0.2;
+const float BOX_MAX_HEIGHT_OFFSET = 0.1;
+
+
+vec3 getBoxColor(vec2 fixedGridPosition) {
+	float r = rand(fixedGridPosition) * 0.5 + 0.5;
+	float b = rand(fixedGridPosition.yx) * 0.5 + 0.5;
+	
+	return vec3(0, r, b);
+}
+
+
+RayResult getBoxResult(vec3 rayPoint, vec2 fixedGridPosition) {
+	float boxHeight = BOX_MIN_HEIGHT + BOX_MAX_HEIGHT_OFFSET * rand(fixedGridPosition);
+	
+	vec3 boxCenter = vec3(fixedGridPosition.x, boxHeight / 2.0, fixedGridPosition.y);
+	vec3 boxB = vec3(0.5, boxHeight / 2.0, 0.5);
+	
+	float boxDistance = getBoxDistance(boxCenter, boxB, rayPoint);
+	
+	vec3 boxColor = getBoxColor(fixedGridPosition);
+	
+	return NoLightRayResult(boxDistance, boxColor);
+}
+
+
+
+vec3 getModRayPoint(vec3 rayPoint) {
+	vec3 modVector = vec3(1, 1, 1);
+	
+	vec3 modRayPoint = mod(rayPoint, modVector) - 0.5 * modVector;
+	
+	return vec3(modRayPoint.x, rayPoint.y, modRayPoint.z);
+}
+
+vec2 getFixedGridPosition2(vec2 p) {
+	return p;
+}
+
+
+RayResult getBoxesResult(vec3 rayPoint) {
+	rayPoint = getModRayPoint(rayPoint);
+	
+	vec2 coordGridPosition = getGridPosition(rayPoint.xz);
+	vec2 coordFixedGridPosition = getFixedGridPosition2(rayPoint.xz);
+	
+	RayResult bestResult = NoHitRayResult(999);
+	
+	for (int i = -1; i <= 1; i++) {
+	
+		for (int j = -1; j <= 1; j++) {
+			
+			vec2 currentFixedGridPosition = coordFixedGridPosition + vec2(i, j);
+			
+			RayResult boxResult = getBoxResult(rayPoint, currentFixedGridPosition);
+			
+			if (boxResult.dist < EPSILON) return boxResult;
+			
+			bestResult = getCloserRayResult(bestResult, boxResult);
+		
+		}
+	}
+	
+	bestResult;
+}
+
+
+
+
+RayResult test1(vec3 rayPoint) {
+	vec3 boxC = vec3(0, 0, 0);
+	vec3 boxB = vec3(10, 10, 10);
+	
+	float boxDist = getBoxDistance(boxC, boxB, rayPoint);
+	
+	if (abs(rayPoint.x) > 10 || abs(rayPoint.z) > 10) return NoHitRayResult(boxDist);
+	
+	return getBoxesResult(rayPoint);
+}
+
+
+
+
+
+
+
+
 void main() {
 	//coordinates in range [0,1]
     vec2 coord = gl_FragCoord.xy/iResolution;
 	
 	coord.x *= iResolution.x / iResolution.y;
-	
-	//vec3 color = getSquareColor(coord);
-	
-	//float t = test(coord);
-	
-	//if (t > 1.1) color = vec3(1);
-	//else if (t > 0) color = vec3(1.0, 0.8, 0.0);
-	
-    //gl_FragColor = vec4(color, 1.0);
 	
 	//camera setup
 	vec3 camP = calcCameraPos();
@@ -262,7 +341,8 @@ void main() {
 	
 	while (step < MAX_STEPS) {
 		
-		RayResult rayResult = distFuncWithColor(point, camDir);
+		//RayResult rayResult = distFuncWithColor(point, camDir);
+		RayResult rayResult = test1(point);
 		float hitDistance = rayResult.dist;
 		vec3 hitColor = rayResult.color;
 		
@@ -274,6 +354,8 @@ void main() {
 			hit = true;
 			
 			color = hitColor;
+			
+			break;
 			
 			vec3 hitNormal = getNormal(point, camDir);
 			vec3 toLight = normalize(vec3(-100, 100, -100) - point);

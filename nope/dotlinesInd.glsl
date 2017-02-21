@@ -4,9 +4,34 @@
 
 uniform vec2 iResolution;
 uniform float iGlobalTime;
-uniform vec3 iMouse;
 
-const float EPSILON = 0.0001;
+
+
+const vec2 CENTER = vec2(0.0);
+const float CIRCLE_MIN = 0.3;
+const float CIRCLE_MAX = 0.45;
+
+
+float uDotlinesCircleSize = 1.0;
+
+float getCircleSizeFactor() {
+	return uDotlinesCircleSize;
+}
+
+
+float getCircleMin() {
+	return CIRCLE_MIN * getCircleSizeFactor();
+}
+
+float getCircleMax() {
+	return CIRCLE_MAX * getCircleSizeFactor();
+}
+
+bool isInCircle(vec2 coord) {
+	float dist = distance(CENTER, coord);
+	
+	return dist > getCircleMin() && dist < getCircleMax();
+}
 
 
 
@@ -27,20 +52,13 @@ float noise(float u)
 }
 
 
-const vec2 CENTER = vec2(0.5);
-const float CIRCLE_MIN = 0.3;
-const float CIRCLE_MAX = 0.45;
-
-bool isInCircle(vec2 coord) {
-	float dist = distance(CENTER, coord);
-	
-	return dist >= CIRCLE_MIN && dist <= CIRCLE_MAX;
-}
 
 
 
+float NUMBER_OF_POINTS = 40.0;
 
-float NUMBER_OF_POINTS = 20.0;
+
+uniform float uMusic;
 
 
 float getMusicFactor() {
@@ -48,6 +66,10 @@ float getMusicFactor() {
 	
 	float p1 = 0.1;
 	float p2 = 3.9;
+	
+	return uMusic;
+	
+	//return x < 2 ? 0 : 1;
 	
 	return x < p1 ? x * (1 / p1) : max((p2 - (x - p1)) / p2, 0);
 }
@@ -72,27 +94,6 @@ float getMusicTest() {
 	return modF;
 }
 
-/*
-	vec2 threeHand = normalize(vec2(2.1, 0.6) - CENTER);
-	vec2 twelveHand = normalize(vec2(4.0, -1.9) - CENTER);
-	vec2 coordHand = normalize(coord - CENTER);
-	
-	float threeHandAngle = dot(threeHand, coordHand) * 0.5 + 0.5;
-	float twelveHandAngle = dot(twelveHand, coordHand) * 0.5 + 0.5;
-	
-	float xValue = threeHandAngle * 2;
-	
-	float noiseValue1 = noise(xOffset + threeHandAngle * MUSIC_LINE_FREQUENCY);
-	float noiseValue2 = noise(xOffset * 0.5 + twelveHandAngle * MUSIC_LINE_FREQUENCY);
-	
-	float noiseValue = noiseValue1 + noiseValue2;
-	
-	//float noiseValue = noise(xOffset + xValue * MUSIC_LINE_FREQUENCY);
-	
-	//xValue = fract(xValue + iGlobalTime * 0.2);
-
-
-*/
 
 
 const float MUSIC_LINE_MINIMUM_SPEED = 0.02;
@@ -117,28 +118,13 @@ float getMusicLineValue(vec2 coord, float xOffset) {
 	
 	float angle = dot(twelveHand, coordHand) * 0.5 + 0.5;
 	
-	float xValue = angle;
-	
-	float xV = xOffset + xValue * MUSIC_LINE_FREQUENCY;
-	
-	float noiseValue = noise(xV);
-	
-	float noiseValue2 = noise(xOffset + 7 + xValue * MUSIC_LINE_FREQUENCY);
-	
-	//noiseValue = noiseValue * noiseValue2;
-	
-	
-	
-	//float noiseValue = noise(xOffset + xValue * MUSIC_LINE_FREQUENCY);
-	
-	
-	//if (coord.x < CENTER.x) noiseValue = 0;
-	
-	//xValue = fract(xValue + iGlobalTime * 0.2);
+	float noiseValue = noise(xOffset + angle * MUSIC_LINE_FREQUENCY) * 0.9 + 0.1;
 	
 	float coordYValue = length(coord - CENTER);
 	
-	coordYValue = mySmoothstep2(coordYValue, CIRCLE_MIN, CIRCLE_MAX);
+	coordYValue = mySmoothstep2(coordYValue, getCircleMin(), getCircleMax());
+	
+	//if (abs(angle) < 10.02) return coordYValue;
 	
 	float amplitudeFactor = MUSIC_LINE_MINIMUM_AMPLITUDE + getMusicFactor() * MUSIC_LINE_AMPLITUDE;
 	
@@ -167,13 +153,10 @@ float getMusicLinesValue(vec2 coord) {
 	return min(musicLineValue, 1.0);
 }
 
-const float POINT_MIN_OFFSET = 0.5;
-
 const float POINT_SPEED_FACTOR = 0.3;
-
-const float POINT_OFFSET_FACTOR = 0.01;
-
-const float POINT_AMPLITUDE = 0.1;
+const float POINT_GENERAL_OFFSET_FACTOR = 0.25;
+const float POINT_RANDOM_OFFSET_FACTOR = 0.2;
+const float MUSIC_AMPLITUDE = 0.1;
 
 
 vec2 getPointCenter(float index) {
@@ -181,20 +164,17 @@ vec2 getPointCenter(float index) {
 	
 	float angle = (TWOPI / NUMBER_OF_POINTS) * index + iGlobalTime * randSpeed;
 	
-	vec2 center = vec2(cos(angle), sin(angle)) * 0.4;
+	float halfCircleSize = (CIRCLE_MAX - CIRCLE_MIN) / 2.0;
 	
-	vec2 randSeed = vec2(cos(index), sin(index));
-	vec2 offset = rand2(randSeed) * POINT_OFFSET_FACTOR;
+	float pointStart = CIRCLE_MIN + halfCircleSize * POINT_GENERAL_OFFSET_FACTOR;
 	
-	//vec2 offset = vec2(0);
+	float randOffset = pnRand(index) * halfCircleSize * POINT_RANDOM_OFFSET_FACTOR;
 	
-	float f = min(iGlobalTime * 0.5, 1);
+	float musicOffset = getMusicFactor() * MUSIC_AMPLITUDE * 0.5;
 	
-	float musicF = getMusicFactor() * POINT_AMPLITUDE + (CIRCLE_MIN + POINT_MIN_OFFSET);
+	vec2 pointCenter = vec2(cos(angle), sin(angle)) * (pointStart + randOffset + musicOffset);
 	
-	// QUATSCH
-	
-	return CENTER + center * f * musicF + offset * f;
+	return CENTER + pointCenter;
 }
 
 
@@ -207,8 +187,6 @@ float getPointValue(vec2 coord, float index) {
 	
 	float dist = distance(coord, center);
 	
-	float thickness = 0.001;
-	
 	return myReverseSmoothstep2(dist, POINT_THICKNESS, POINT_THICKNESS + POINT_GLOW_SIZE);
 }
 
@@ -216,22 +194,13 @@ float getPointValue(vec2 coord, float index) {
 float getPointsValue(vec2 coord) {
 	if (!isInCircle(coord)) return 0;
 	
-	float step = TWOPI / 20.0;
-	
-	float val = 0.0;
+	float pointsValue = 0.0;
 	
 	for (float i = 0; i < NUMBER_OF_POINTS; i++) {
-		val = max(val, getPointValue(coord, i));
+		pointsValue = max(pointsValue, getPointValue(coord, i));
 	}
 	
-	return val;
-}
-
-
-vec2 getRandomPoint(float seed) {
-	float randomIndex = floor(rand(seed) * NUMBER_OF_POINTS);
-	
-	return getPointCenter(randomIndex);
+	return pointsValue;
 }
 
 
@@ -241,11 +210,13 @@ void main() {
 	//coordinates in range [0,1]
     vec2 coord = gl_FragCoord.xy/iResolution;
 	
-	coord.x *= iResolution.x / iResolution.y;
+	coord = getAdjustedCoord(coord, iResolution.x / iResolution.y, 1 + iGlobalTime * 0.02);
+	
+	//coord.x *= iResolution.x / iResolution.y;
 	
 	vec3 color = vec3(getPointsValue(coord));
 	
-	color += vec3(getMusicLinesValue(coord));
+	color += vec3(1.0, 0.9, 0.8) * getMusicLinesValue(coord);
 	
     gl_FragColor = vec4(color, 1.0);
 }
