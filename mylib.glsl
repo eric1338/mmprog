@@ -38,11 +38,6 @@ vec2 getAdjustedCoord(vec2 coord, float ratio, float zoom) {
 }
 
 
-
-
-
-
-/*
 vec3 getTwoColorBackground(vec2 coord, vec3 color1, vec3 color2) {
 	float f1 = cos(coord.x + 0.2);
 	float f2 = cos(coord.y + 0.1);
@@ -50,13 +45,11 @@ vec3 getTwoColorBackground(vec2 coord, vec3 color1, vec3 color2) {
 	float color1Factor = f1 * 0.5 + f2 * 0.5;
 	float color2Factor = 1 - color1Factor;
 	
-	color1Factor *= 0.25;
-	color2Factor *= 0.25;
+	color1Factor *= 0.55;
+	color2Factor *= 0.55;
 	
-	return color1 * 0.05 + color1 * color1Factor + color2 * 0.4 + color2 * color2Factor;
-	//return vec3(0.0, 0.1 + greenFactor, 0.4 + blueFactor) * 0.4;
+	return color1 * 0.25 + color1 * color1Factor + color2 * 0.25 + color2 * color2Factor;
 }
-*/
 
 
 float mySmoothstep(float value, float zeroStart, float oneEnd) {

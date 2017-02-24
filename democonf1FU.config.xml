@@ -1,6 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <DemoData2 xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Uniforms>
+  
+    <Uniform>
+      <UniformName>iCamPosX</UniformName>
+      <Keyframes>
+        <Keyframe>
+          <Time>0.0</Time>
+          <Value>0</Value>
+        </Keyframe>
+      </Keyframes>
+    </Uniform>
+  
+    <Uniform>
+      <UniformName>iCamPosY</UniformName>
+      <Keyframes>
+        <Keyframe>
+          <Time>35.0</Time>
+          <Value>-0.9</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>36.0</Time>
+          <Value>0.0</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>46.0</Time>
+          <Value>0.2</Value>
+        </Keyframe>
+      </Keyframes>
+    </Uniform>
+  
+    <Uniform>
+      <UniformName>iCamPosZ</UniformName>
+      <Keyframes>
+        <Keyframe>
+          <Time>0.0</Time>
+          <Value>0</Value>
+        </Keyframe>
+      </Keyframes>
+    </Uniform>
+	
+    <Uniform>
+      <UniformName>iCamRotX</UniformName>
+      <Keyframes>
+        <Keyframe>
+          <Time>35.0</Time>
+          <Value>-0.5</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>36.0</Time>
+          <Value>0.0</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>46.0</Time>
+          <Value>0.1</Value>
+        </Keyframe>
+      </Keyframes>
+    </Uniform>
+	
+    <Uniform>
+      <UniformName>iCamRotY</UniformName>
+      <Keyframes>
+        <Keyframe>
+          <Time>0.0</Time>
+          <Value>0</Value>
+        </Keyframe>
+      </Keyframes>
+    </Uniform>
+	
+    <Uniform>
+      <UniformName>iCamRotZ</UniformName>
+      <Keyframes>
+        <Keyframe>
+          <Time>0.0</Time>
+          <Value>0</Value>
+        </Keyframe>
+      </Keyframes>
+    </Uniform>
+  
     <Uniform>
       <UniformName>uMusic</UniformName>
       <Keyframes>

@@ -8,8 +8,12 @@
 uniform vec2 iResolution;
 uniform float iGlobalTime;
 
-const float EPSILON = 0.0001;
+uniform sampler2D texture0;
+uniform sampler2D texture1;
 
+uniform float uSpaceStarsYOffset;
+
+const float EPSILON = 0.0001;
 
 
 const float N_ROWS = 25;
@@ -17,22 +21,98 @@ const float N_ROWS = 25;
 const float VISIBILITY_THRESHOLD = 0.8;
 
 const float OFFSET_FACTOR = 0.1;
-
 const float LAYER_OFFSET = 0.05;
 
 const float SHININESS_TIME_FACTOR = 0.2;
-
 const float SHININESS_EXPONENT = 128;
-
 const float SHININESS_FACTOR = 2.0;
-
-
 
 const float FARTHEST_STAR_SIZE = 0.2;
 
 const float DISTANCE_BETWEEN_LAYERS = 0.3;
 
 const float INTRA_LAYER_DISTANCE = 0.2;
+
+
+vec3 PLANET_CENTER = vec3(0, 0.4, 5);
+
+const float PLANET_RADIUS = 1.2;
+
+const float ATMOSPHERE_SIZE = 0.5;
+const float ATMOSPHERE_EXPONENT = 3;
+
+const vec3 ATMOSPHERE_COLOR = vec3(0.3, 0.5, 0.9);
+
+const vec3 LIGHT_POSITION = vec3(2);
+const vec3 LIGHT_DIRECTION = vec3(-1, 1, -1);
+
+const vec3 BG_COLOR_1 = vec3(0.0, 0.6, 0.4);
+const vec3 BG_COLOR_2 = vec3(0.0, 0.2, 0.8);
+
+
+const float SHOOTING_STAR_PERIOD = 4.0;
+const float SHOOTING_STAR_EXPONENT = 16.0;
+
+
+float getStarYOffset() {
+	return uSpaceStarsYOffset;
+}
+
+
+vec3 sphereNormal(vec3 M, vec3 P) {
+	return normalize(P - M);
+}
+
+float sSphere(vec3 point, vec3 center, float radius) {
+	return length(point - center) - radius;
+}
+
+
+
+
+float noise(vec2 coord) {
+	vec2 i = floor(coord); // integer position
+
+	//random value at nearest integer positions
+	float v00 = rand(i);
+	float v10 = rand(i + vec2(1, 0));
+	float v01 = rand(i + vec2(0, 1));
+	float v11 = rand(i + vec2(1, 1));
+	
+	vec2 f = fract(coord);
+	vec2 weight = f; // linear interpolation
+	weight = smoothstep(0, 1, f); // cubic interpolation
+
+	float x1 = mix(v00, v10, weight.x);
+	float x2 = mix(v01, v11, weight.x);
+	return mix(x1, x2, weight.y);
+}
+
+
+
+float fBm(vec2 coord) {
+	// Properties
+	int octaves = 6;
+	float lacunarity = 2.5;
+	float gain = 0.5;
+	// Initial values
+	float amplitude = 0.5;
+	float value = 0;
+	
+	// Loop of octaves
+	for (int i = 0; i < octaves; ++i) {
+		value += amplitude * noise(coord);
+		coord *= lacunarity;
+		amplitude *= gain;
+	}
+	
+	return value;
+}
+
+
+
+
+
 
 
 float getShininess(vec2 fixedGridPos) {
@@ -44,10 +124,9 @@ float getShininess(vec2 fixedGridPos) {
 }
 
 float getStarValueFromLayer(int layer, vec2 coord) {
-	
 	vec2 newCoord = coord + vec2(layer * LAYER_OFFSET);
 	
-	newCoord.y += iGlobalTime * (0.01 + layer * 0.004);
+	newCoord.y += getStarYOffset() * (0.01 + layer * 0.004);
 	
 	vec2 posInGrid = newCoord * N_ROWS;
 	vec2 fixedGridPos = floor(posInGrid);
@@ -57,11 +136,6 @@ float getStarValueFromLayer(int layer, vec2 coord) {
 	
 	vec2 starPos = middle + offset * OFFSET_FACTOR;
 	
-	// test
-	//if (fract(posInGrid.x) < 0.1 || fract(posInGrid.y) < 0.1) return 0.2;
-	
-	//if (mod(coord.x, 0.3) < 0.005) return 0.2;
-	
 	float randomValue = rand(fixedGridPos * (layer + 0.7));
 	
 	if (rand(randomValue) < VISIBILITY_THRESHOLD) return 0;
@@ -69,14 +143,10 @@ float getStarValueFromLayer(int layer, vec2 coord) {
 	float lfB = layer * 0.3;
 	float rhB = (layer + 1) * 0.3;
 	
-	//if (coord.x < lfB || coord.x > rhB) return 0.0;
-	
-	
 	float size = 0;
 	float distanceFactor = 8 - 5 * randomValue - size;
 	
 	float dist = distance(posInGrid, starPos);
-	
 	
 	float starSize = FARTHEST_STAR_SIZE + layer * DISTANCE_BETWEEN_LAYERS;
 	
@@ -133,14 +203,11 @@ float getLineValue(vec2 pointA, vec2 pointB, vec2 coord) {
 	return wholeLine * (distance(coord, pointA) / distance(pointA, pointB));
 }
 
-
-const float SHOOTING_STAR_PERIOD = 4.0;
-
-const float SHOOTING_STAR_EXPONENT = 16.0;
-
 float getShootingStarValue(vec2 coord) {
-	float fixedTime = floor(iGlobalTime / SHOOTING_STAR_PERIOD);
-	float partialTime = mod(iGlobalTime, SHOOTING_STAR_PERIOD);
+	float shootingStarTime = iGlobalTime - 34;
+	
+	float fixedTime = floor(shootingStarTime / SHOOTING_STAR_PERIOD);
+	float partialTime = mod(shootingStarTime, SHOOTING_STAR_PERIOD);
 	
 	vec2 startingPos = rand2(vec2(cos(fixedTime * 0.92), sin(fixedTime * 1.12)));
 	startingPos = startingPos * vec2(1, 0.5) + vec2(1, 0.5);
@@ -160,76 +227,7 @@ float getShootingStarValue(vec2 coord) {
 }
 
 
-
-vec3 sphereNormal(vec3 M, vec3 P) {
-	return normalize(P - M);
-}
-
-float sSphere(vec3 point, vec3 center, float radius) {
-	return length(point - center) - radius;
-}
-
-
-
-vec3 PLANET_CENTER = vec3(0, 0.4, 5) + iGlobalTime * vec3(0, -0.1, 0);
-
-const float PLANET_RADIUS = 1.2;
-
-const float ATMOSPHERE_SIZE = 0.5;
-const float ATMOSPHERE_EXPONENT = 3;
-
-const vec3 ATMOSPHERE_COLOR = vec3(0.3, 0.5, 0.9);
-
-const vec3 LIGHT_POSITION = vec3(2);
-
-const vec3 LIGHT_DIRECTION = vec3(-1, 1, -1);
-
-
-
-
-float noise(vec2 coord) {
-	vec2 i = floor(coord); // integer position
-
-	//random value at nearest integer positions
-	float v00 = rand(i);
-	float v10 = rand(i + vec2(1, 0));
-	float v01 = rand(i + vec2(0, 1));
-	float v11 = rand(i + vec2(1, 1));
-	
-	vec2 f = fract(coord);
-	vec2 weight = f; // linear interpolation
-	weight = smoothstep(0, 1, f); // cubic interpolation
-
-	float x1 = mix(v00, v10, weight.x);
-	float x2 = mix(v01, v11, weight.x);
-	return mix(x1, x2, weight.y);
-}
-
-
-
-float fBm(vec2 coord) {
-	// Properties
-	int octaves = 6;
-	float lacunarity = 2.5;
-	float gain = 0.5;
-	// Initial values
-	float amplitude = 0.5;
-	float value = 0;
-	
-	// Loop of octaves
-	for (int i = 0; i < octaves; ++i) {
-		value += amplitude * noise(coord);
-		coord *= lacunarity;
-		amplitude *= gain;
-	}
-	
-	return value;
-}
-
-uniform sampler2D tex;
-
 vec3 getOnPlanetColor(vec3 position) {
-	
 	position = position + vec3(iGlobalTime) * vec3(0.025, 0.017, 0.025);
 	
 	vec3 relPos = normalize(position - PLANET_CENTER);
@@ -249,7 +247,9 @@ vec3 getOnPlanetColor(vec3 position) {
 		color = vec3(0.6, 0.0, 0.3);
 	}
 	
-	return color * 0.9 + texture(tex, texC).rgb * 0.1;
+	vec3 fu = texture(texture0, vec2(0)).rgb;
+	
+	return color * 0.9 + texture(texture1, texC).rgb * 0.1;
 }
 
 
@@ -305,37 +305,7 @@ vec4 getPlanetColor(vec2 coord) {
 }
 
 
-vec3 getTwoColorBackground(vec2 coord, vec3 color1, vec3 color2) {
-	float f1 = cos(coord.x + 0.2);
-	float f2 = cos(coord.y + 0.1);
-	
-	//return coord.x < 0.8 ? color1 : color2;
-	
-	float color1Factor = f1 * 0.5 + f2 * 0.5;
-	float color2Factor = 1 - color1Factor;
-	
-	//return vec3(1);
-	
-	color1Factor *= 0.55;
-	color2Factor *= 0.55;
-	
-	return color1 * 0.25 + color1 * color1Factor + color2 * 0.25 + color2 * color2Factor;
-	//return vec3(0.0, 0.1 + greenFactor, 0.4 + blueFactor) * 0.4;
-}
-
-
-const vec3 BG_COLOR_1 = vec3(0.0, 0.6, 0.4) * 1.0;
-const vec3 BG_COLOR_2 = vec3(0.0, 0.2, 0.8) * 1.0;
-
-//const vec3 BG_COLOR_1 = vec3(0.0, 0.6, 0.4);
-//const vec3 BG_COLOR_2 = vec3(0.0, 0.2, 0.8);
-
-//const vec3 BG_COLOR_1 = vec3(0.5, 0.15, 0.33);
-//const vec3 BG_COLOR_2 = vec3(0.16, 0.38, 0.56);
-
-
 vec3 getBackgroundColor(vec2 coord) {
-	
 	float f1 = cos(coord.x + 0.2);
 	float f2 = cos(coord.y + 0.1);
 	
@@ -345,8 +315,6 @@ vec3 getBackgroundColor(vec2 coord) {
 	
 	greenFactor *= 0.5;
 	blueFactor *= 0.5;
-	
-	//vec3 bgColor = vec3(0.0, 0.1 + greenFactor, 0.4 + blueFactor) * 0.4;
 	
 	vec3 bgColor = getTwoColorBackground(coord, BG_COLOR_1, BG_COLOR_2) * 0.7;
 	
