@@ -1,5 +1,4 @@
 
-
 struct LightedColor {
 	vec3 color;
 	float lightFactor;

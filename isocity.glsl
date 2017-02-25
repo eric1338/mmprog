@@ -10,7 +10,6 @@ uniform float iGlobalTime;
 
 const float EPSILON = 0.001;
 
-
 const float MAX_STEPS = 500;
 
 const float FOG_START = 10;
@@ -365,17 +364,16 @@ float distFunc(vec3 rayPoint) {
 	return rayResult.dist;
 }
 
-vec3 getNormal(vec3 point)
-{
-	float d = 0.0001;
-	//get points a little bit to each side of the point
+vec3 getNormal(vec3 point) {
+	float d = EPSILON;
+	
 	vec3 right = point + vec3(d, 0.0, 0.0);
 	vec3 left = point + vec3(-d, 0.0, 0.0);
 	vec3 up = point + vec3(0.0, d, 0.0);
 	vec3 down = point + vec3(0.0, -d, 0.0);
 	vec3 behind = point + vec3(0.0, 0.0, d);
 	vec3 before = point + vec3(0.0, 0.0, -d);
-	//calc difference of distance function values == numerical gradient
+	
 	vec3 gradient = vec3(distFunc(right) - distFunc(left),
 		distFunc(up) - distFunc(down),
 		distFunc(behind) - distFunc(before));
@@ -407,13 +405,10 @@ vec3 getBackgroundColor(vec2 coord) {
 }
 
 
-void main()
-{
-	//camera setup
+void main() {
 	vec3 camP = calcCameraPos();
 	vec3 camDir = calcCameraRayDir(80.0, gl_FragCoord.xy, iResolution);
 	
-	vec3 color = vec3(1, 0, 0);
 	vec4 color4 = vec4(0);
 	
 	vec3 point = camP;
@@ -422,10 +417,9 @@ void main()
 	
 	bool hit = false;
 	
-	float ff = 0;
+	float fogFactor = 0;
 	
 	while (step < MAX_STEPS) {
-		
 		RayResult rayResult = distFuncWithColor(point);
 		float hitDistance = rayResult.dist;
 		vec3 hitColor = rayResult.color;
@@ -437,7 +431,7 @@ void main()
 		if (hitDistance < EPSILON) {
 			hit = true;
 			
-			color = hitColor;
+			vec3 color = hitColor;
 			
 			vec3 hitNormal = getNormal(point);
 			vec3 toLight = normalize(vec3(-100, 100, -100) - point);
@@ -446,17 +440,9 @@ void main()
 			
 			if (rayResult.lightFactor < 0.5) color *= lambert;
 			
-			// test
-			//if (hitColor.b > 0.9) color = hitColor;
-			
-			//color *= max((maxDistance - distanceToCam) / maxDistance, 0);
-			//color = hitNormal;
-			
-			ff = getFogFactor(distanceToCam);
+			fogFactor = getFogFactor(distanceToCam);
 			
 			color4 = vec4(color, 1.0);
-			//color4 = vec4(color, getFogFactor(distanceToCam));
-			//color4 = vec4(getFogFactor(distanceToCam), color.g, color.b, 1.0);
 			
 			break;
 		}
@@ -466,20 +452,11 @@ void main()
 		step++;
 	}
 	
-	vec3 bgColor = getBackgroundColor(camDir.xy);
+	vec3 backgroundColor = getBackgroundColor(camDir.xy);
 	
-	color4 = ff * color4 + (1 - ff) * vec4(bgColor, 1.0);
-	
-	if (!hit && false) {
-		//color = vec3(0);
-		color = getBackgroundColor(camDir.xy);
-		color4 = vec4(color, 1.0);
-	}
-	
-	//color4 *= vec4(1.05, 0.9, 1.1, 1.0);
+	color4 = fogFactor * color4 + (1 - fogFactor) * vec4(backgroundColor, 1.0);
 	
 	gl_FragColor = color4;
-	//gl_FragColor = vec4(color, 1.0);
 }
 
 

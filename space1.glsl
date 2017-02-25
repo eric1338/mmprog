@@ -53,6 +53,8 @@ const vec3 BG_COLOR_2 = vec3(0.0, 0.2, 0.8);
 const float SHOOTING_STAR_PERIOD = 4.0;
 const float SHOOTING_STAR_EXPONENT = 16.0;
 
+const float SHOOTING_STAR_THICKNESS = 0.0012;
+
 
 float getStarYOffset() {
 	return uSpaceStarsYOffset;
@@ -176,8 +178,6 @@ float getStarValue(vec2 coord) {
 	
 	return starValue;
 }
-
-const float SHOOTING_STAR_THICKNESS = 0.0012;
 
 float getLineValue(vec2 pointA, vec2 pointB, vec2 coord) {
 	float thickness = 0.002;

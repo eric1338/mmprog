@@ -5,6 +5,8 @@
 uniform vec2 iResolution;
 uniform float iGlobalTime;
 
+uniform float uCirclesShaderStart;
+
 const float EPSILON = 0.0001;
 
 const vec2 CENTER = vec2(0.0, 0.0);
@@ -16,7 +18,7 @@ const float CIRCLE_STEP = 0.06;
 
 
 float getShaderStart() {
-	return 0.3;
+	return uCirclesShaderStart;
 }
 
 float getTime() {
