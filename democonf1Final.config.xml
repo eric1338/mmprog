@@ -3,6 +3,24 @@
   <Uniforms>
   
     <Uniform>
+      <UniformName>uSpaceStarsYOffset</UniformName>
+      <Keyframes>
+        <Keyframe>
+          <Time>34.5</Time>
+          <Value>0</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>35.3</Time>
+          <Value>4</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>46</Time>
+          <Value>14</Value>
+        </Keyframe>
+      </Keyframes>
+    </Uniform>
+  
+    <Uniform>
       <UniformName>uCirclesShaderStart</UniformName>
       <Keyframes>
         <Keyframe>
@@ -13,27 +31,57 @@
     </Uniform>
   
     <Uniform>
-      <UniformName>uSpaceStarsYOffset</UniformName>
+      <UniformName>uIsocityWindowThresholdOffset</UniformName>
       <Keyframes>
         <Keyframe>
-          <Time>35.0</Time>
-          <Value>0</Value>
+          <Time>54.0</Time>
+          <Value>0.0</Value>
         </Keyframe>
         <Keyframe>
-          <Time>35.8</Time>
-          <Value>4</Value>
+          <Time>72.0</Time>
+          <Value>0.3</Value>
+        </Keyframe>
+      </Keyframes>
+    </Uniform>
+  
+    <Uniform>
+      <UniformName>uIsocityVisibilityFactor</UniformName>
+      <Keyframes>
+        <Keyframe>
+          <Time>0.0</Time>
+          <Value>1.0</Value>
         </Keyframe>
         <Keyframe>
-          <Time>46</Time>
-          <Value>14</Value>
+          <Time>67.0</Time>
+          <Value>1.0</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>72.0</Time>
+          <Value>0.0</Value>
         </Keyframe>
       </Keyframes>
     </Uniform>
 	
-	
     <Uniform>
       <UniformName>iCamPosX</UniformName>
       <Keyframes>
+        <Keyframe>
+          <Time>24.9</Time>
+          <Value>3.12</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>30.0</Time>
+          <Value>34.66</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>34.699</Time>
+          <Value>12.9</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>34.7</Time>
+          <Value>0.0</Value>
+        </Keyframe>
+		
         <Keyframe>
           <Time>54.0</Time>
           <Value>0</Value>
@@ -48,11 +96,11 @@
         </Keyframe>
         <Keyframe>
           <Time>63.0</Time>
-          <Value>-23.7</Value>
+          <Value>-24.7</Value>
         </Keyframe>
         <Keyframe>
-          <Time>66.0</Time>
-          <Value>-29.5</Value>
+          <Time>72.0</Time>
+          <Value>-32.0</Value>
         </Keyframe>
       </Keyframes>
     </Uniform>
@@ -61,11 +109,24 @@
       <UniformName>iCamPosY</UniformName>
       <Keyframes>
         <Keyframe>
-          <Time>35.0</Time>
+          <Time>24.9</Time>
+          <Value>-13.44</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>30.0</Time>
+          <Value>-53.9</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>34.699</Time>
+          <Value>-67.18</Value>
+        </Keyframe>
+		
+        <Keyframe>
+          <Time>34.7</Time>
           <Value>-0.8</Value>
         </Keyframe>
         <Keyframe>
-          <Time>35.8</Time>
+          <Time>35.3</Time>
           <Value>0.0</Value>
         </Keyframe>
         <Keyframe>
@@ -75,19 +136,19 @@
 		
         <Keyframe>
           <Time>55.0</Time>
-          <Value>2.84</Value>
+          <Value>3.84</Value>
         </Keyframe>
         <Keyframe>
           <Time>58.5</Time>
-          <Value>1.32</Value>
+          <Value>2.32</Value>
         </Keyframe>
         <Keyframe>
           <Time>63.0</Time>
           <Value>4.0</Value>
         </Keyframe>
         <Keyframe>
-          <Time>66.0</Time>
-          <Value>7.9</Value>
+          <Time>72.0</Time>
+          <Value>9.9</Value>
         </Keyframe>
       </Keyframes>
     </Uniform>
@@ -95,6 +156,23 @@
     <Uniform>
       <UniformName>iCamPosZ</UniformName>
       <Keyframes>
+        <Keyframe>
+          <Time>24.9</Time>
+          <Value>-20.18</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>30.0</Time>
+          <Value>102.82</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>34.699</Time>
+          <Value>192.54</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>34.7</Time>
+          <Value>0.0</Value>
+        </Keyframe>
+		
         <Keyframe>
           <Time>54.0</Time>
           <Value>0</Value>
@@ -112,8 +190,8 @@
           <Value>-3.74</Value>
         </Keyframe>
         <Keyframe>
-          <Time>66.0</Time>
-          <Value>4.95</Value>
+          <Time>72.0</Time>
+          <Value>7.45</Value>
         </Keyframe>
       </Keyframes>
     </Uniform>
@@ -122,11 +200,24 @@
       <UniformName>iCamRotX</UniformName>
       <Keyframes>
         <Keyframe>
-          <Time>35.0</Time>
+          <Time>24.9</Time>
+          <Value>-0.31</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>30.0</Time>
+          <Value>-0.30</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>34.699</Time>
+          <Value>-0.32</Value>
+        </Keyframe>
+		
+        <Keyframe>
+          <Time>34.7</Time>
           <Value>-0.6</Value>
         </Keyframe>
         <Keyframe>
-          <Time>35.8</Time>
+          <Time>35.3</Time>
           <Value>0.0</Value>
         </Keyframe>
         <Keyframe>
@@ -143,11 +234,11 @@
           <Value>-0.04</Value>
         </Keyframe>
         <Keyframe>
-          <Time>62.0</Time>
+          <Time>63.0</Time>
           <Value>0.26</Value>
         </Keyframe>
         <Keyframe>
-          <Time>66.0</Time>
+          <Time>72.0</Time>
           <Value>-0.17</Value>
         </Keyframe>
       </Keyframes>
@@ -157,10 +248,26 @@
       <UniformName>iCamRotY</UniformName>
       <Keyframes>
         <Keyframe>
+          <Time>24.9</Time>
+          <Value>0.23</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>30.0</Time>
+          <Value>0.11</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>34.699</Time>
+          <Value>-0.52</Value>
+        </Keyframe>
+        <Keyframe>
+          <Time>34.7</Time>
+          <Value>0.0</Value>
+        </Keyframe>
+		
+        <Keyframe>
           <Time>54.0</Time>
           <Value>0</Value>
         </Keyframe>
-		
         <Keyframe>
           <Time>55.0</Time>
           <Value>-1.87</Value>
@@ -170,11 +277,11 @@
           <Value>-1.58</Value>
         </Keyframe>
         <Keyframe>
-          <Time>62.0</Time>
+          <Time>63.0</Time>
           <Value>-0.97</Value>
         </Keyframe>
         <Keyframe>
-          <Time>66.0</Time>
+          <Time>72.0</Time>
           <Value>-0.31</Value>
         </Keyframe>
       </Keyframes>
@@ -1633,7 +1740,7 @@
           <ShaderPath>.\myPlane.glsl</ShaderPath>
         </ShaderKeyframe>
         <ShaderKeyframe>
-          <Time>35.2</Time>
+          <Time>34.7</Time>
           <ShaderPath>.\space1.glsl</ShaderPath>
         </ShaderKeyframe>
         <ShaderKeyframe>
@@ -1648,8 +1755,8 @@
     </Track>
   </Tracks>
   <Textures>
-    <string>.\artisans3.png</string>
     <string>.\planetTexture.jpg</string>
+    <string>.\artisans3.png</string>
   </Textures>
   <SoundFileName />
 </DemoData2>

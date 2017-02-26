@@ -5,6 +5,7 @@
 uniform vec2 iResolution;
 uniform float iGlobalTime;
 
+uniform float uMusic;
 uniform float uCirclesShaderStart;
 
 const float EPSILON = 0.0001;
@@ -66,11 +67,23 @@ float getCircleValue(float start, float end, float size, float randStart, float 
 	return (x < size) ? 1 : 0;
 }
 
-float getCirclesValue(vec2 coord) {
-	float circleValue = 0;
+vec4 getCircleColor(int index) {
+	//if (index == 1) return vec4(1.0, 0.0, 0.4, 1.0);
 	
-	for (float i = 1; i <= NUMBER_OF_CIRCLES; i++) {
-		float start = i * CIRCLE_STEP;
+	//return vec4(0.0, 0.2, 0.8, 1.0);
+	
+	if (index == 1) return vec4(0.963, 0.89, 0.741, 1.0);
+	if (index == 2) return vec4(0.936, 0.7, 0.62, 1.0);
+	if (index == 3) return vec4(0.7, 0.5, 0.515, 1.0);
+	
+	return vec4(0.45, 0.383, 0.43, 1.0);
+}
+
+vec4 getCirclesColor(vec2 coord) {
+	vec4 circlesColor = vec4(0);
+	
+	for (int i = 1; i <= NUMBER_OF_CIRCLES; i++) {
+		float start = i * CIRCLE_STEP + uMusic * 0.000 * i;
 		float thickness = CIRCLE_THICKNESS;
 		
 		float randStart = rand(i * 0.4);
@@ -80,17 +93,24 @@ float getCirclesValue(vec2 coord) {
 		
 		size += 0.245;
 		
-		if (getTime() > 7) size += (getTime() - 7) * 0.095;
+		if (getTime() > 7) size += (getTime() - 7) * 0.092;
 		
-		circleValue += getCircleValue(start, start + thickness, size, randStart, randSpeed, coord);
+		float circleValue = getCircleValue(start, start + thickness, size, randStart, randSpeed, coord);
+		
+		if (circleValue > 0.001) {
+			circlesColor = getCircleColor(i) * circleValue;
+		}
+		
+		//circleValue += getCircleValue(start, start + thickness, size, randStart, randSpeed, coord);
 	}
 	
-	return circleValue;
+	return circlesColor;
 }
 
 
-vec3 getBGColor(vec2 coord) {
-	return getTwoColorBackground(coord, vec3(0.1, 0.11, 0.12), vec3(0.2, 0.22, 0.24) * 1.2);
+vec3 getBackgroundColor(vec2 coord) {
+	return vec3(0.254, 0.242, 0.29);
+	//return getTwoColorBackground(coord, vec3(0.1, 0.11, 0.12), vec3(0.2, 0.22, 0.24) * 1.2);
 }
 
 
@@ -102,11 +122,9 @@ void main() {
 	
 	vec2 newCoord = getAdjustedCoord(coord, iResolution.x / iResolution.y, 0.25 + getTime() * 0.07);
 	
-	float circlesValue = getCirclesValue(newCoord);
+	vec4 circlesColor = getCirclesColor(newCoord);
 	
-	vec3 color = vec3(circlesValue);
+	vec4 color = circlesColor.a > 0.01 ? circlesColor : vec4(getBackgroundColor(coord), 1.0);
 	
-	if (circlesValue < 0.05) color = getBGColor(newCoord);
-	
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = color;
 }

@@ -242,9 +242,9 @@ vec3 getOnPlanetColor(vec3 position) {
 		color = vec3(0.1, 0.4, 0.8);
 		
 	} else if (t > 0.35) {
-		color = vec3(1, 0.9, 0.6);
-	} else {
-		color = vec3(0.6, 0.0, 0.3);
+		color = vec3(1, 0.8, 0.8);
+	}else {
+		color = vec3(0.54 - t * 0.3, 0.18, 0.36);
 	}
 	
 	vec3 fu = texture(texture0, vec2(0)).rgb;
@@ -254,7 +254,6 @@ vec3 getOnPlanetColor(vec3 position) {
 
 
 vec4 getPlanetColor(vec2 coord) {
-	
 	vec3 camP = calcCameraPos();
 	vec3 camDir = calcCameraRayDir(80.0, coord, iResolution);
 

@@ -77,10 +77,21 @@ vec2 getVoronoiPointPosition(vec2 fixedGridPosition) {
 }
 
 vec3 getVoronoiPointColor(vec2 fixedGridPosition) {
-	float r = rand(fixedGridPosition) * 0.5 + 0.5;
-	float b = rand(fixedGridPosition.yx) * 0.5 + 0.5;
+	float r = rand(fixedGridPosition) * 0.4 + 0.5;
+	float b = rand(fixedGridPosition.yx) * 0.2 + 0.8;
+	
+	//r *= 0.8;
+	//b = b + 0.2;
+	
+	//if (rand(b * 5) > 0.5) return vec3(0.9, r, b);
 	
 	return vec3(0, r, b);
+	
+	// (fixedGridPosition.y > 0.5) return vec3(r, 0, b);
+	
+	//return vec3(b, b * 0.4, b * 0.8);
+	
+	return vec3(1 + fixedGridPosition.y * 0.5, r, b);
 }
 
 
@@ -191,8 +202,8 @@ vec4 getVoronoiShaderColor(vec2 coord) {
 // DOTLINES
 
 const vec2 CENTER = vec2(0.0);
-const float CIRCLE_MIN = 0.3;
-const float CIRCLE_MAX = 0.45;
+const float CIRCLE_MIN = 0.4;
+const float CIRCLE_MAX = 0.55;
 
 float NUMBER_OF_POINTS = 40.0;
 
@@ -203,14 +214,14 @@ const float POINT_MUSIC_AMPLITUDE = 0.1;
 const float POINT_SPEED_FACTOR = 0.3;
 
 const float POINT_THICKNESS = 0.001;
-const float POINT_GLOW_SIZE = 0.0005;
+const float POINT_GLOW_SIZE = 0.001;
 
 const float MUSIC_LINE_FREQUENCY = 20;
 const float MUSIC_LINE_AMPLITUDE = 0.2;
 const float MUSIC_LINE_MINIMUM_AMPLITUDE = 0.05;
 
 const float MUSIC_LINE_MINIMUM_SPEED = 0.02;
-const float MUSIC_LINE_SPEED_FACTOR = 0.1;
+const float MUSIC_LINE_SPEED_FACTOR = 0.8;
 
 const float MUSIC_LINE_THICKNESS = 0.0015;
 const float MUSIC_LINE_GLOW_SIZE = 0.001;
@@ -345,11 +356,21 @@ float getPointsValue(vec2 coord) {
 
 
 vec3 getDotlinesShaderColor(vec2 coord) {
-	vec3 color = vec3(getPointsValue(coord));
+	//vec3 color = vec3(0.612, 0.1248, 0.324) * getPointsValue(coord);
+	//color += vec3(1.0, 0.99, 0.98) * getMusicLinesValue(coord);
 	
-	color += vec3(1.0, 0.9, 0.8) * getMusicLinesValue(coord);
+	vec3 color = vec3(1.0, 0.99, 0.98) * getPointsValue(coord);
+	//color += vec3(0.612, 0.1248, 0.324) * getMusicLinesValue(coord);
+	color += vec3(0.8, 0.0, 0.3) * getMusicLinesValue(coord);
 	
-	return color + vec3(1.0, 0.0, 0.4) * 0.5;
+	float x = distance(CENTER, coord) / 3.0;
+	
+	vec3 bgColor = x * vec3(0.09, 0.10, 0.11) + (1 - x) * vec3(0.14, 0.15, 0.16);
+	
+	//vec3 bgColor = vec3(0.07, 0.09, 0.16);
+	//vec3 bgColor = getTwoColorBackground(coord, vec3(0.1, 0.11, 0.12), vec3(0.2, 0.22, 0.24) * 1.2);
+	
+	return color + bgColor;
 }
 
 

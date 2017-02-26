@@ -8,6 +8,10 @@
 uniform vec2 iResolution;
 uniform float iGlobalTime;
 
+uniform float uMusic;
+uniform float uIsocityWindowThresholdOffset;
+uniform float uIsocityVisibilityFactor;
+
 const float EPSILON = 0.001;
 
 const float MAX_STEPS = 500;
@@ -52,7 +56,8 @@ const float VERTICAL_WINDOW_SPACE = 0.2;
 
 const float GROUND_LEVEL_HEIGHT = 0.3;
 
-const float WINDOW_ON_THRESHOLD = 1.0;
+const float WINDOW_ON_LOWER_THRESHOLD = 0.1;
+const float WINDOW_ON_UPPER_THRESHOLD = 0.7;
 
 const float X_SEED = 6.97;
 const float Y_SEED = 4.42;
@@ -63,10 +68,12 @@ const float MINUS_SEED_FACTOR = 4.15;
 const vec3 STREET_COLOR = vec3(0.1);
 const vec3 STRIPE_COLOR = vec3(1);
 const vec3 SIDEWALK_COLOR = vec3(0.2);
-const vec3 CORNER_COLOR = vec3(0.2, 0.4, 0.4);
+//const vec3 CORNER_COLOR = vec3(0.2, 0.4, 0.4);
+const vec3 CORNER_COLOR = vec3(0.2, 0.4, 0.6);
 
-const vec3 BUILDING_COLOR = vec3(0.2);
+const vec3 BUILDING_COLOR = vec3(0.229, 0.218, 0.26);
 const vec3 WINDOW_ON_COLOR = vec3(0.9);
+//const vec3 WINDOW_ON_COLOR = vec3(0.963, 0.89, 0.741);
 const vec3 WINDOW_OFF_COLOR = vec3(0.25);
 
 const float GLOW_LENGTH = 0.04;
@@ -87,6 +94,23 @@ float getTileWidth() {
 
 float getHalfTileWidth() {
 	return getTileWidth() / 2.0;
+}
+
+float getWindowOnExponent() {
+	return WINDOW_ON_EXPONENT;
+	//return WINDOW_ON_EXPONENT * (1 - uMusic * 0.7);
+}
+
+float getWindowOnLowerThreshold() {
+	return WINDOW_ON_LOWER_THRESHOLD + uIsocityWindowThresholdOffset;
+}
+
+float getWindowOnUpperThreshold() {
+	return WINDOW_ON_UPPER_THRESHOLD + uIsocityWindowThresholdOffset;
+}
+
+float getVisibilityFactor() {
+	return uIsocityVisibilityFactor;
 }
 
 
@@ -262,9 +286,11 @@ LightedColor getBuildingColor(float buildingWidth, float buildingHeight, float w
 	
 	float glowValue = hWindowValue.glowFactor * vWindowValue.glowFactor;
 	
-	bool isWindowOn = hWindowValue.randFactor + vWindowValue.randFactor > WINDOW_ON_THRESHOLD;
+	float windowOnFactor = hWindowValue.randFactor + vWindowValue.randFactor;
 	
-	float glowExponent = isWindowOn ? WINDOW_ON_EXPONENT : WINDOW_OFF_EXPONENT;
+	bool isWindowOn = windowOnFactor > getWindowOnLowerThreshold() && windowOnFactor < getWindowOnUpperThreshold();
+	
+	float glowExponent = isWindowOn ? getWindowOnExponent() : WINDOW_OFF_EXPONENT;
 	vec3 windowColor = isWindowOn ? WINDOW_ON_COLOR : WINDOW_OFF_COLOR;
 	
 	glowValue = pow(glowValue, glowExponent);
@@ -380,11 +406,17 @@ vec3 getNormal(vec3 point) {
 	return normalize(gradient);
 }
 
+vec3 BG_COLOR_1 = vec3(0.7, 0.5, 0.515);
+vec3 BG_COLOR_2 = vec3(0.45, 0.383, 0.43);
+
+//vec3 BG_COLOR_1 = vec3(0.0, 0.3, 0.5);
+//vec3 BG_COLOR_2 = vec3(0.98, 0.77, 0.4);
+
 
 vec3 getBackgroundColor(vec2 coord) {
-	float value = 0;
+	//return BG_COLOR_1;
 	
-	const vec3 white = vec3(1);
+	//return getTwoColorFogBackground(coord, BG_COLOR_1, BG_COLOR_2, vec3(0.4), 0.2);
 	
 	float f1 = cos(coord.x + 0.2);
 	float f2 = cos(coord.y + 0.1);
@@ -393,15 +425,25 @@ vec3 getBackgroundColor(vec2 coord) {
 	
 	float blueFactor = 1 - greenFactor;
 	
-	greenFactor *= 0.5;
-	blueFactor *= 0.5;
+	//vec3 bgColor = greenFactor * BG_COLOR_1 + blueFactor * BG_COLOR_2;
 	
-	vec3 bgColor = vec3(0.0, 0.2 + greenFactor, 0.5 + blueFactor) * 0.4;
-	//vec3 bgColor = vec3(0.2 + greenFactor, 0.0, 0.5 + blueFactor) * 0.4;
+	greenFactor = greenFactor * 0.5 + 0.5;
+	blueFactor = blueFactor * 0.5 + 0.6;
 	
-	vec3 color = value * white + (1 - value) * bgColor;
-
-	return color;
+	//vec3 bgColor = vec3(0.0, 0.2 + greenFactor, 0.5 + blueFactor) * 0.4;
+	vec3 bgColor = vec3(0.0, greenFactor * 0.8, blueFactor) * 0.35;
+	
+	// + getBackgroundFogColor(coord.yx, vec3(0, 0.3, 1.0), 0.1)
+	
+	//color += getBackgroundFogColor(coord.yx, vec3(1, 0, 0.0), 0.6);
+	
+	vec3 fogColor = vec3(0, 0.3, 1);
+	float fogFactor = 0.3;
+	
+	bgColor += getBackgroundFogColor(coord, fogColor, fogFactor);
+	bgColor += getBackgroundFogColor(coord + vec2(10, 20), fogColor, fogFactor);
+	
+	return bgColor;
 }
 
 
@@ -456,7 +498,7 @@ void main() {
 	
 	color4 = fogFactor * color4 + (1 - fogFactor) * vec4(backgroundColor, 1.0);
 	
-	gl_FragColor = color4;
+	gl_FragColor = color4 * getVisibilityFactor();
 }
 
 

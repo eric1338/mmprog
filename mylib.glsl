@@ -37,6 +37,46 @@ vec2 getAdjustedCoord(vec2 coord, float ratio, float zoom) {
 	return newCoord;
 }
 
+float getBackgroundNoise(vec2 coord) {
+	vec2 i = floor(coord); // integer position
+
+	//random value at nearest integer positions
+	float v00 = rand(i);
+	float v10 = rand(i + vec2(1, 0));
+	float v01 = rand(i + vec2(0, 1));
+	float v11 = rand(i + vec2(1, 1));
+	
+	vec2 f = fract(coord);
+	vec2 weight = f; // linear interpolation
+	weight = smoothstep(0, 1, f); // cubic interpolation
+
+	float x1 = mix(v00, v10, weight.x);
+	float x2 = mix(v01, v11, weight.x);
+	return mix(x1, x2, weight.y);
+}
+
+float getBackgroundFBM(vec2 coord) {
+	// Properties
+	int octaves = 6;
+	float lacunarity = 2.5;
+	float gain = 0.5;
+	// Initial values
+	float amplitude = 0.5;
+	float value = 0;
+	
+	// Loop of octaves
+	for (int i = 0; i < octaves; ++i) {
+		value += amplitude * getBackgroundNoise(coord);
+		coord *= lacunarity;
+		amplitude *= gain;
+	}
+	
+	return value;
+}
+
+vec3 getBackgroundFogColor(vec2 coord, vec3 fogColor, float fogFactor) {
+	return fogColor * getBackgroundFBM(coord) * fogFactor;
+}
 
 vec3 getTwoColorBackground(vec2 coord, vec3 color1, vec3 color2) {
 	float f1 = cos(coord.x + 0.2);
@@ -49,6 +89,10 @@ vec3 getTwoColorBackground(vec2 coord, vec3 color1, vec3 color2) {
 	color2Factor *= 0.55;
 	
 	return color1 * 0.25 + color1 * color1Factor + color2 * 0.25 + color2 * color2Factor;
+}
+
+vec3 getTwoColorFogBackground(vec2 coord, vec3 color1, vec3 color2, vec3 fogColor, float fogFactor) {
+	return getTwoColorBackground(coord, color1, color2) + getBackgroundFogColor(coord, fogColor, fogFactor);
 }
 
 

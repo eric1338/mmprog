@@ -34,18 +34,31 @@ const float ISLANDS_DISTANCE = 20;
 
 const float BOX_HALF_WIDTH = 0.3;
 const float BOX_MIN_HEIGHT = 0.5;
-const float BOX_HEIGHT_RAND_OFFSET_FACTOR = 0.25;
-const float BOX_HEIGHT_MUSIC_OFFSET_FACTOR = 0.25;
+const float BOX_HEIGHT_RAND_OFFSET_FACTOR = 0.3;
+const float BOX_HEIGHT_MUSIC_OFFSET_FACTOR = 0.15;
 const float BOXES_MARGIN_FACTOR = 1.1;
 
-const vec3 ISLAND_TOP_COLOR = vec3(0.3, 0.6, 0.3);
-const vec3 ISLAND_BOTTOM_COLOR = vec3(0.4, 0.2, 0.1);
+const vec3 ISLAND_TOP_COLOR = vec3(0.64, 0.72, 0.53);
+const vec3 ISLAND_BOTTOM_COLOR = vec3(0.5265, 0.312, 0.3354) * 1.4;
 
-//const vec3 BG_COLOR_1 = vec3(0.2, 0.6, 1.0);
-//const vec3 BG_COLOR_2 = vec3(0.5, 0.9, 1.0);
+const vec3 BG_COLOR_1 = vec3(0.2, 0.6, 1.0);
+const vec3 BG_COLOR_2 = vec3(0.5, 0.9, 1.0);
 
-const vec3 BG_COLOR_1 = vec3(0.1, 0.4, 1.0);
-const vec3 BG_COLOR_2 = vec3(0.2, 0.6, 1.0);
+//const vec3 BG_COLOR_1 = vec3(0.9945, 0.6162, 0.6123);
+//const vec3 BG_COLOR_2 = vec3(0.9945, 0.6162, 0.6123);
+
+const vec3 BG_FOG_COLOR = vec3(0.9945, 0.6162, 0.6123);
+
+const vec3 BOX_COLOR_1 = vec3(1.0, 0.0, 0.55);
+const vec3 BOX_COLOR_2 = vec3(1.0, 0.8, 0.65);
+const vec3 BOX_COLOR_3 = vec3(0.0, 0.65, 1.0);
+
+//const vec3 BOX_COLOR_1 = vec3(0.9945, 0.0379, 0.4953);
+//const vec3 BOX_COLOR_2 = vec3(0.9711, 0.7995, 0.6747);
+//const vec3 BOX_COLOR_3 = vec3(0.0457, 0.8176, 0.7825);
+
+
+
 
 
 float getMusicFactor() {
@@ -77,10 +90,6 @@ float getIslandRandVal(vec3 rayPoint) {
 	return (rand(frp.xy) + rand(frp.zx) + rand(frp.yz)) / 3.0;
 }
 
-const vec3 BOX_COLOR_1 = vec3(1.0, 0.0, 0.4);
-const vec3 BOX_COLOR_2 = vec3(1.0, 0.8, 0.4);
-const vec3 BOX_COLOR_3 = vec3(0.0, 0.4, 1.0);
-
 vec3 getBoxColor(float randVal) {
 	if (randVal < 0.33) return BOX_COLOR_1;
 	if (randVal < 0.66) return BOX_COLOR_2;
@@ -108,7 +117,9 @@ RayResult getIslandResult(vec3 rayPoint) {
 RayResult getBoxResult(vec3 rayPoint, vec3 modRayPoint, int i, int j) {
 	float randVal = rand(vec2(i, j) + getIslandRandVal(rayPoint));
 	
-	float boxHeightOffset = randVal * BOX_HEIGHT_RAND_OFFSET_FACTOR + getMusicFactor() * BOX_HEIGHT_MUSIC_OFFSET_FACTOR;
+	float musicFactor = max(0, getMusicFactor() - 0.4 * rand(randVal)) * (1 - rand(randVal + 1) * 0.3);
+	
+	float boxHeightOffset = randVal * BOX_HEIGHT_RAND_OFFSET_FACTOR + musicFactor * BOX_HEIGHT_MUSIC_OFFSET_FACTOR;
 	
 	float boxHeight = BOX_MIN_HEIGHT + boxHeightOffset;
 	
@@ -176,47 +187,8 @@ vec3 getNormal(vec3 point) {
 }
 
 
-float noise(vec2 coord) {
-	vec2 i = floor(coord); // integer position
-
-	//random value at nearest integer positions
-	float v00 = rand(i);
-	float v10 = rand(i + vec2(1, 0));
-	float v01 = rand(i + vec2(0, 1));
-	float v11 = rand(i + vec2(1, 1));
-	
-	vec2 f = fract(coord);
-	vec2 weight = f; // linear interpolation
-	weight = smoothstep(0, 1, f); // cubic interpolation
-
-	float x1 = mix(v00, v10, weight.x);
-	float x2 = mix(v01, v11, weight.x);
-	return mix(x1, x2, weight.y);
-}
-
-float fBm(vec2 coord) {
-	// Properties
-	int octaves = 6;
-	float lacunarity = 2.5;
-	float gain = 0.5;
-	// Initial values
-	float amplitude = 0.5;
-	float value = 0;
-	
-	// Loop of octaves
-	for (int i = 0; i < octaves; ++i) {
-		value += amplitude * noise(coord);
-		coord *= lacunarity;
-		amplitude *= gain;
-	}
-	
-	return value;
-}
-
-
-
 vec3 getBackgroundColor(vec2 coord) {
-	return getTwoColorBackground(coord, BG_COLOR_1, BG_COLOR_2) + fBm(coord) * 0.5 * vec3(1);
+	return getTwoColorFogBackground(coord, BG_COLOR_1, BG_COLOR_2, BG_FOG_COLOR, 0.5);
 }
 
 
@@ -249,9 +221,9 @@ void main() {
 			vec3 color = hitColor;
 			
 			vec3 hitNormal = getNormal(point);
-			vec3 toLight = normalize(vec3(-80, 100, -80) - point);
+			vec3 toLight = normalize(vec3(-50, 100, -50) - point);
 			
-			float lambert = max(dot(hitNormal, toLight), 0.2);
+			float lambert = max(dot(hitNormal, toLight), 0.2) * 1.1;
 			
 			if (rayResult.lightFactor < 0.5) color *= lambert;
 			
